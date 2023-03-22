@@ -1,111 +1,97 @@
 require_relative '../../scripts/react_native_pods'
 
 source 'https://cdn.cocoapods.org/'
-platform :ios, '10.0'
+platform :ios, min_ios_version_supported
 
-# TODO(macOS GH#214)
-# Otherwise duplicate UUIDs are being generated between the iOS and macOS targets.
-# FIXME: https://github.com/microsoft/react-native/issues/210
-install! 'cocoapods', :deterministic_uuids => false
+prepare_react_native_project!
 
-if ENV['USE_FRAMEWORKS'] == '1'
+USE_FRAMEWORKS = ENV['USE_FRAMEWORKS'] == '1'
+IN_CI = ENV['CI'] == 'true'
+
+@prefix_path = "../.."
+
+if USE_FRAMEWORKS
   puts "Installing pods with use_frameworks!"
   use_frameworks!
 end
 
-def pods(options = {})
+def pods(target_name, options = {}, use_flipper: !IN_CI && !USE_FRAMEWORKS)
   project 'RNTesterPods.xcodeproj'
 
-  # Enable TurboModule
-  prefix_path = "../.."
-  use_react_native!(path:prefix_path)
-  pod 'ReactCommon/turbomodule/samples', :path => "#{prefix_path}/ReactCommon"
+  # [macOS Disable Fabric by default till macOS supports it
+  fabric_enabled = ENV['USE_FABRIC'] == '1' || ENV['RCT_NEW_ARCH_ENABLED'] == '1' 
+  # macOS]
+
+  # Hermes is now enabled by default.
+  # The following line will only disable Hermes if the USE_HERMES envvar is SET to a value other than 1 (e.g. USE_HERMES=0).
+  # [macOS] Make hermes disabled by default for our fork
+  hermes_enabled = ENV['USE_HERMES'] == '1'
+  puts "Configuring #{target_name} with Fabric #{fabric_enabled ? "enabled" : "disabled"}.#{hermes_enabled ? " Using Hermes engine." : ""}"
+
+  if ENV['RCT_NEW_ARCH_ENABLED'] == '1'
+    # Custom fabric component is only supported when using codegen discovery.
+    pod 'MyNativeView', :path => "NativeComponentExample"
+  end
+
+  use_react_native!(
+    path: @prefix_path,
+    fabric_enabled: fabric_enabled,
+    hermes_enabled: hermes_enabled,
+    flipper_configuration: FlipperConfiguration.disabled, # [macOS] Disable Flipper as it's not supported on macOS
+    app_path: "#{Dir.pwd}",
+    config_file_dir: "#{Dir.pwd}/node_modules",
+    production: !ENV['PRODUCTION'].nil?
+  )
+  pod 'ReactCommon/turbomodule/samples', :path => "#{@prefix_path}/ReactCommon"
 
   # Additional Pods which aren't included in the default Podfile
-  pod 'React-RCTPushNotification', :path => "#{prefix_path}/Libraries/PushNotificationIOS"
-  pod 'Yoga',:path => "#{prefix_path}/ReactCommon/yoga", :modular_headers => true
-  pod 'React-TurboModuleCxx-WinRTPort', :path => "#{prefix_path}/ReactTurboModuleCxx"
-  pod 'React-TurboModuleCxx-RNW', :podspec => "#{prefix_path}/ReactTurboModuleCxx/React-TurboModuleCxx-RNW.podspec"
+  pod 'React-RCTPushNotification', :path => "#{@prefix_path}/Libraries/PushNotificationIOS"
+  pod 'Yoga', :path => "#{@prefix_path}/ReactCommon/yoga", :modular_headers => true
   # Additional Pods which are classed as unstable
-  #
-  # To use fabric: add `fabric_enabled` option to the use_react_native method above, like below
-  # use_react_native!(path: "..", fabric_enabled: true)
+
+  # [macOS Github#1734: Disable React-TurboModuleCxx RNW implementation as React Native now has C++ sharing support and examples
+  # pod 'React-TurboModuleCxx-WinRTPort', :path => "#{@prefix_path}/ReactTurboModuleCxx" 
+  # pod 'React-TurboModuleCxx-RNW', :podspec => "#{@prefix_path}/ReactTurboModuleCxx/React-TurboModuleCxx-RNW.podspec"
+  # macOS]
+
+  # RNTester native modules and components
+  pod 'ScreenshotManager', :path => "NativeModuleExample"
 end
 
 target 'RNTester' do
-  pods()
-  use_flipper!
+  pods('RNTester')
 end
 
 target 'RNTesterUnitTests' do
-  pods()
+  pods('RNTesterUnitTests')
   pod 'React-RCTTest', :path => "./RCTTest"
+  pod 'OCMock', '~> 3.9.1'
 end
 
 target 'RNTesterIntegrationTests' do
-  pods()
+  pods('RNTesterIntegrationTests')
   pod 'React-RCTTest', :path => "./RCTTest"
 end
 
 target 'RNTester-macOS' do
-  platform :osx, '10.14'
-  pods(:hermes_enabled => false)
+  platform :osx, '10.15'
+  pods('RNTester-macOS')
 end
 
 target 'RNTester-macOSUnitTests' do
-  platform :osx, '10.14'
-  pods()
+  platform :osx, '10.15'
+  pods('RNTester-macOSUnitTests')
   pod 'React-RCTTest', :path => "./RCTTest"
+  pod 'OCMock', '~> 3.9.1'
 end
 
 target 'RNTester-macOSIntegrationTests' do
-  platform :osx, '10.14'
-  pods()
+  platform :osx, '10.15'
+  pods('RNTester-macOSIntegrationTests')
   pod 'React-RCTTest', :path => "./RCTTest"
 end
 
-# [TODO(macOS GH#774): these are special targets used by the internal Microsoft build pipeline
-target 'iosDeviceBuild' do
-  platform :ios, '10.0'
-  pods()
-end
-
-target 'iosSimulatorBuild' do
-  platform :ios, '10.0'
-  pods()
-end
-
-target 'macOSBuild' do
-  platform :osx, '10.14'
-  pods()
-end
-# ]TODO(macOS GH#774)
-
-def frameworks_pre_install(installer)
-  static_frameworks = ['FlipperKit', 'Flipper', 'Flipper-Folly',
-      'CocoaAsyncSocket', 'ComponentKit', 'Flipper-DoubleConversion',
-      'Flipper-Glog', 'Flipper-PeerTalk', 'Flipper-RSocket',
-      'CocoaLibEvent', 'OpenSSL-Universal', 'boost-for-react-native']
-
-  Pod::Installer::Xcode::TargetValidator.send(:define_method, :verify_no_static_framework_transitive_dependencies) {}
-  installer.pod_targets.each do |pod|
-    if static_frameworks.include?(pod.name)
-      def pod.build_type
-        Pod::BuildType.static_library
-      end
-    end
-  end
-end
-
-def codegen_pre_install(installer)
-  system("../../scripts/generate-native-modules-specs.sh")
-end
-
-pre_install do |installer|
-  frameworks_pre_install(installer) if ENV['USE_FRAMEWORKS'] == '1'
-  codegen_pre_install(installer) if ENV['USE_CODEGEN'] == '1'
-end
-
 post_install do |installer|
-  flipper_post_install(installer)
+  react_native_post_install(installer, @prefix_path, :mac_catalyst_enabled => false)
+  __apply_Xcode_12_5_M1_post_install_workaround(installer)
 end

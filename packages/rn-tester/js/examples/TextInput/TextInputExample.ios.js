@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -18,18 +18,26 @@ const {
   Text,
   TextInput,
   View,
+  Image, // [macOS]
+  Platform, // [macOS]
   StyleSheet,
   Slider,
   Switch,
   Alert,
 } = require('react-native');
+// [macOS
+import type {
+  KeyboardType,
+  SettingChangeEvent,
+  PasteEvent,
+} from 'react-native/Libraries/Components/TextInput/TextInput'; // macOS]
 
 const TextInputSharedExamples = require('./TextInputSharedExamples.js');
 
-import type {RNTesterExampleModuleItem} from '../../types/RNTesterTypes';
+import type {RNTesterModuleExample} from '../../types/RNTesterTypes';
 
 class WithLabel extends React.Component<$FlowFixMeProps> {
-  render() {
+  render(): React.Node {
     return (
       <View style={styles.labelContainer}>
         <View style={styles.label}>
@@ -41,16 +49,20 @@ class WithLabel extends React.Component<$FlowFixMeProps> {
   }
 }
 
-class TextInputAccessoryViewExample extends React.Component<{...}, *> {
-  constructor(props) {
+class TextInputAccessoryViewChangeTextExample extends React.Component<
+  {...},
+  {text: string},
+> {
+  constructor(props: void | {...}) {
     super(props);
     this.state = {text: 'Placeholder Text'};
   }
 
-  render() {
+  render(): React.Node {
     const inputAccessoryViewID = 'inputAccessoryView1';
     return (
       <View>
+        <Text>Set InputAccessoryView with ID & reset text:</Text>
         <TextInput
           style={styles.default}
           inputAccessoryViewID={inputAccessoryViewID}
@@ -70,12 +82,77 @@ class TextInputAccessoryViewExample extends React.Component<{...}, *> {
   }
 }
 
-class RewriteExampleKana extends React.Component<$FlowFixMeProps, any> {
-  constructor(props) {
+class TextInputAccessoryViewChangeKeyboardExample extends React.Component<
+  {...},
+  {keyboardType: string, text: string},
+> {
+  constructor(props: void | {...}) {
+    super(props);
+    this.state = {text: '', keyboardType: 'default'};
+  }
+
+  _switchKeyboard = () => {
+    this.setState({
+      keyboardType:
+        this.state.keyboardType === 'default' ? 'number-pad' : 'default',
+    });
+  };
+
+  render(): React.Node {
+    const inputAccessoryViewID = 'inputAccessoryView2';
+    return (
+      <View>
+        <Text>Set InputAccessoryView with ID & switch keyboard:</Text>
+        {/* $FlowFixMe[incompatible-use] */}
+        <TextInput
+          style={styles.default}
+          inputAccessoryViewID={inputAccessoryViewID}
+          onChangeText={text => this.setState({text})}
+          value={this.state.text}
+          // $FlowFixMe[incompatible-type]
+          keyboardType={this.state.keyboardType}
+          returnKeyType="done"
+        />
+        <InputAccessoryView nativeID={inputAccessoryViewID}>
+          <View style={{backgroundColor: 'white'}}>
+            <Button onPress={this._switchKeyboard} title="Switch Keyboard" />
+          </View>
+        </InputAccessoryView>
+      </View>
+    );
+  }
+}
+
+class TextInputAccessoryViewDefaultDoneButtonExample extends React.Component<
+  $ReadOnly<{|
+    keyboardType: KeyboardType,
+  |}>,
+  {text: string},
+> {
+  constructor(props: void | $ReadOnly<{keyboardType: KeyboardType}>) {
     super(props);
     this.state = {text: ''};
   }
-  render() {
+
+  render(): React.Node {
+    return (
+      <TextInput
+        style={styles.default}
+        onChangeText={text => this.setState({text})}
+        value={this.state.text}
+        keyboardType={this.props.keyboardType}
+        returnKeyType="done"
+      />
+    );
+  }
+}
+
+class RewriteExampleKana extends React.Component<$FlowFixMeProps, any> {
+  constructor(props: any | void) {
+    super(props);
+    this.state = {text: ''};
+  }
+  render(): React.Node {
     return (
       <View style={styles.rewriteContainer}>
         <TextInput
@@ -92,7 +169,7 @@ class RewriteExampleKana extends React.Component<$FlowFixMeProps, any> {
 }
 
 class SecureEntryExample extends React.Component<$FlowFixMeProps, any> {
-  constructor(props) {
+  constructor(props: any | void) {
     super(props);
     this.state = {
       text: '',
@@ -100,7 +177,7 @@ class SecureEntryExample extends React.Component<$FlowFixMeProps, any> {
       isSecureTextEntry: true,
     };
   }
-  render() {
+  render(): React.Node {
     return (
       <View>
         <TextInput
@@ -140,7 +217,7 @@ class AutogrowingTextInputExample extends React.Component<
   $FlowFixMeProps,
   $FlowFixMeState,
 > {
-  constructor(props) {
+  constructor(props: any | void) {
     super(props);
 
     this.state = {
@@ -154,13 +231,13 @@ class AutogrowingTextInputExample extends React.Component<
     };
   }
 
-  UNSAFE_componentWillReceiveProps(props) {
+  UNSAFE_componentWillReceiveProps(props: any) {
     this.setState({
       multiline: props.multiline,
     });
   }
 
-  render() {
+  render(): React.Node {
     const {style, multiline, ...props} = this.props;
     return (
       <View>
@@ -229,6 +306,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Cochin',
     height: 60,
   },
+  singleLine: {
+    fontSize: 16,
+  },
   singlelinePlaceholderStyles: {
     letterSpacing: 10,
     textAlign: 'center',
@@ -254,6 +334,130 @@ const styles = StyleSheet.create({
   },
 });
 
+// [macOS
+function AutoCorrectSpellCheckGrammarCheckCallbacks(): React.Node {
+  const [enableAutoCorrect, setEnableAutoCorrect] = React.useState(false);
+  const [enableSpellSpeck, setEnableSpellSpeck] = React.useState(false);
+  const [enableGrammarCheck, setEnableGrammarCheck] = React.useState(false);
+  return (
+    <>
+      <Text>
+        enableAutoCorrect: {enableAutoCorrect ? 'enabled' : 'disabled'}
+      </Text>
+      <Text>enableSpellSpeck: {enableSpellSpeck ? 'enabled' : 'disabled'}</Text>
+      <Text>
+        enableGrammarCheck: {enableGrammarCheck ? 'enabled' : 'disabled'}
+      </Text>
+      <TextInput
+        autoCorrect={enableAutoCorrect}
+        style={{padding: 10, marginTop: 10}}
+        multiline={true}
+        onAutoCorrectChange={(event: SettingChangeEvent) =>
+          setEnableAutoCorrect(event.nativeEvent.enabled)
+        }
+        onSpellCheckChange={(event: SettingChangeEvent) =>
+          setEnableSpellSpeck(event.nativeEvent.enabled)
+        }
+        onGrammarCheckChange={(event: SettingChangeEvent) =>
+          setEnableGrammarCheck(event.nativeEvent.enabled)
+        }
+      />
+    </>
+  );
+}
+
+function OnDragEnterOnDragLeaveOnDrop(): React.Node {
+  const [log, setLog] = React.useState([]);
+  const appendLog = (line: string) => {
+    const limit = 6;
+    let newLog = log.slice(0, limit - 1);
+    newLog.unshift(line);
+    setLog(newLog);
+  };
+  return (
+    <>
+      <TextInput
+        multiline={false}
+        draggedTypes={'fileUrl'}
+        onDragEnter={e => appendLog('SinglelineEnter')}
+        onDragLeave={e => appendLog('SinglelineLeave')}
+        onDrop={e => appendLog('SinglelineDrop')}
+        style={styles.multiline}
+        placeholder="SINGLE LINE with onDragEnter|Leave() and onDrop()"
+      />
+      <TextInput
+        multiline={true}
+        draggedTypes={'fileUrl'}
+        onDragEnter={e => appendLog('MultilineEnter')}
+        onDragLeave={e => appendLog('MultilineLeave')}
+        onDrop={e => appendLog('MultilineDrop')}
+        style={styles.multiline}
+        placeholder="MULTI LINE with onDragEnter|Leave() and onDrop()"
+      />
+      <Text style={{height: 120}}>{log.join('\n')}</Text>
+      <TextInput
+        multiline={false}
+        style={styles.multiline}
+        placeholder="SINGLE LINE w/o onDragEnter|Leave() and onDrop()"
+      />
+      <TextInput
+        multiline={true}
+        style={styles.multiline}
+        placeholder="MULTI LINE w/o onDragEnter|Leave() and onDrop()"
+      />
+    </>
+  );
+}
+
+function OnPaste(): React.Node {
+  const [log, setLog] = React.useState([]);
+  const appendLog = (line: string) => {
+    const limit = 3;
+    let newLog = log.slice(0, limit - 1);
+    newLog.unshift(line);
+    setLog(newLog);
+  };
+  const [imageUri, setImageUri] = React.useState(
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z/C/HgAGgwJ/lK3Q6wAAAABJRU5ErkJggg==',
+  );
+  return (
+    <>
+      <TextInput
+        multiline={true}
+        style={styles.multiline}
+        onPaste={(e: PasteEvent) => {
+          appendLog(JSON.stringify(e.nativeEvent.dataTransfer.types));
+          setImageUri(e.nativeEvent.dataTransfer.files[0].uri);
+        }}
+        pastedTypes={['string']}
+        placeholder="MULTI LINE with onPaste() text from clipboard"
+      />
+      <TextInput
+        multiline={true}
+        style={styles.multiline}
+        onPaste={(e: PasteEvent) => {
+          appendLog(JSON.stringify(e.nativeEvent.dataTransfer.types));
+          setImageUri(e.nativeEvent.dataTransfer.files[0].uri);
+        }}
+        pastedTypes={['fileUrl', 'image', 'string']}
+        placeholder="MULTI LINE with onPaste() for PNG/TIFF images from clipboard or fileUrl (via Finder) and text from clipboard"
+      />
+      <Text style={{height: 30}}>{log.join('\n')}</Text>
+      <Image
+        source={{uri: imageUri}}
+        style={{
+          width: 128,
+          height: 128,
+          margin: 4,
+          borderWidth: 1,
+          borderColor: 'white',
+        }}
+      />
+    </>
+  );
+}
+// [macOS]
+
 exports.displayName = (undefined: ?string);
 exports.title = 'TextInput';
 exports.documentationURL = 'https://reactnative.dev/docs/textinput';
@@ -263,19 +467,46 @@ exports.examples = ([
   ...TextInputSharedExamples,
   {
     title: 'Live Re-Write (ひ -> 日)',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return <RewriteExampleKana />;
     },
   },
   {
-    title: 'Keyboard Accessory View',
-    render: function(): React.Node {
-      return <TextInputAccessoryViewExample />;
+    title: 'Keyboard Input Accessory View',
+    render: function (): React.Node {
+      return (
+        <View>
+          <TextInputAccessoryViewChangeTextExample />
+          <TextInputAccessoryViewChangeKeyboardExample />
+        </View>
+      );
+    },
+  },
+  {
+    title: "Default Input Accessory View with returnKeyType = 'done'",
+    render: function (): React.Node {
+      const keyboardTypesWithDoneButton = [
+        'number-pad',
+        'phone-pad',
+        'decimal-pad',
+        'ascii-capable-number-pad',
+      ];
+      const examples = keyboardTypesWithDoneButton.map(type => {
+        return (
+          <WithLabel key={'keyboardType: ' + type} label={type}>
+            <TextInputAccessoryViewDefaultDoneButtonExample
+              key={type}
+              keyboardType={type}
+            />
+          </WithLabel>
+        );
+      });
+      return <View>{examples}</View>;
     },
   },
   {
     title: 'Nested content and `value` property',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <WithLabel label="singleline">
@@ -301,7 +532,7 @@ exports.examples = ([
   },
   {
     title: 'Keyboard appearance',
-    render: function(): React.Node {
+    render: function (): React.Node {
       const keyboardAppearance = ['default', 'light', 'dark'];
       const examples = keyboardAppearance.map(type => {
         return (
@@ -315,7 +546,7 @@ exports.examples = ([
   },
   {
     title: 'Return key types',
-    render: function(): React.Node {
+    render: function (): React.Node {
       const returnKeyTypes = [
         'default',
         'go',
@@ -341,7 +572,7 @@ exports.examples = ([
   },
   {
     title: 'Enable return key automatically',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <WithLabel label="true">
@@ -356,13 +587,13 @@ exports.examples = ([
   },
   {
     title: 'Secure text entry',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return <SecureEntryExample />;
     },
   },
   {
     title: 'Colored input text',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <TextInput
@@ -379,7 +610,7 @@ exports.examples = ([
   },
   {
     title: 'Colored highlight/cursor for text input',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <TextInput
@@ -398,7 +629,7 @@ exports.examples = ([
   },
   {
     title: 'Clear button mode',
-    render: function(): React.Node {
+    render: function (): React.Node {
       const clearButtonModes = [
         'never',
         'while-editing',
@@ -421,7 +652,7 @@ exports.examples = ([
   },
   {
     title: 'Clear and select',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <WithLabel label="clearTextOnFocus">
@@ -464,7 +695,7 @@ exports.examples = ([
   },
   {
     title: 'Multiline blur on submit',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <TextInput
@@ -483,7 +714,7 @@ exports.examples = ([
   },
   {
     title: 'Multiline',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <TextInput
@@ -513,6 +744,20 @@ exports.examples = ([
             multiline={true}
             style={styles.multiline}
           />
+          {/* [macOS */}
+          <TextInput
+            placeholder="multiline text input with scroll disabled"
+            multiline={true}
+            scrollEnabled={false}
+            style={styles.multiline}
+          />
+          {/* macOS] */}
+          <TextInput
+            placeholder="multiline text input with vertical scrollbar hidden"
+            multiline={true}
+            style={styles.multiline}
+            hideVerticalScrollIndicator={true}
+          />
           <TextInput
             defaultValue="uneditable multiline text input with phone number detection: 88888888."
             editable={false}
@@ -525,8 +770,37 @@ exports.examples = ([
     },
   },
   {
+    title: 'Editable and Read only',
+    render: function (): React.Node {
+      return (
+        <View>
+          <TextInput
+            placeholder="editable text input using editable prop"
+            style={styles.default}
+            editable
+          />
+          <TextInput
+            placeholder="uneditable text input using editable prop"
+            style={styles.default}
+            editable={false}
+          />
+          <TextInput
+            placeholder="editable text input using readOnly prop"
+            style={styles.default}
+            readOnly={false}
+          />
+          <TextInput
+            placeholder="uneditable text input using readOnly prop"
+            style={styles.default}
+            readOnly
+          />
+        </View>
+      );
+    },
+  },
+  {
     title: 'TextInput Intrinsic Size',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text>Singleline TextInput</Text>
@@ -593,7 +867,7 @@ exports.examples = ([
   },
   {
     title: 'Auto-expanding',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <TextInput
@@ -610,7 +884,7 @@ exports.examples = ([
   },
   {
     title: 'Auto-expanding',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <AutogrowingTextInputExample
@@ -641,7 +915,7 @@ exports.examples = ([
   },
   {
     title: 'TextInput maxLength',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <WithLabel label="maxLength: 5">
@@ -673,8 +947,23 @@ exports.examples = ([
     },
   },
   {
+    title: 'Text Auto Complete',
+    render: function (): React.Node {
+      return (
+        <View>
+          <WithLabel label="country">
+            <TextInput autoComplete="country" style={styles.default} />
+          </WithLabel>
+          <WithLabel label="one-time-code">
+            <TextInput autoComplete="one-time-code" style={styles.default} />
+          </WithLabel>
+        </View>
+      );
+    },
+  },
+  {
     title: 'Text Content Type',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <WithLabel label="emailAddress">
@@ -689,7 +978,7 @@ exports.examples = ([
   },
   {
     title: 'TextInput Placeholder Styles',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <WithLabel label="letterSpacing: 10 lineHeight: 20 textAlign: 'center'">
@@ -711,7 +1000,7 @@ exports.examples = ([
   },
   {
     title: 'showSoftInputOnFocus',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <WithLabel label="showSoftInputOnFocus: false">
@@ -721,4 +1010,105 @@ exports.examples = ([
       );
     },
   },
-]: Array<RNTesterExampleModuleItem>);
+  {
+    title: 'Line Break Strategy',
+    render: function (): React.Node {
+      const lineBreakStrategy = ['none', 'standard', 'hangul-word', 'push-out'];
+      const textByCode = {
+        en: 'lineBreakStrategy lineBreakStrategy lineBreakStrategy lineBreakStrategy',
+        ko: '한글개행한글개행 한글개행한글개행 한글개행한글개행 한글개행한글개행 한글개행한글개행 한글개행한글개행',
+        ja: 'かいぎょう かいぎょう かいぎょう かいぎょう かいぎょう かいぎょう',
+        cn: '改行 改行 改行 改行 改行 改行 改行 改行 改行 改行 改行 改行',
+      };
+      return (
+        <View>
+          {lineBreakStrategy.map(strategy => {
+            return (
+              <View key={strategy} style={{marginBottom: 12}}>
+                <Text
+                  style={{
+                    backgroundColor: 'lightgrey',
+                  }}>{`Strategy: ${strategy}`}</Text>
+                {Object.keys(textByCode).map(code => {
+                  return (
+                    <View key={code}>
+                      <Text style={{fontWeight: 'bold'}}>{`[${code}]`}</Text>
+                      <TextInput
+                        multiline
+                        lineBreakStrategyIOS={strategy}
+                        style={styles.default}
+                        defaultValue={textByCode[code]}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })}
+        </View>
+      );
+    },
+  },
+]: Array<RNTesterModuleExample>);
+// [macOS
+if (Platform.OS === 'macos') {
+  exports.examples.push(
+    {
+      title:
+        'AutoCorrect, spellCheck and grammarCheck callbacks - Multiline Textfield',
+      render: function (): React.Node {
+        return <AutoCorrectSpellCheckGrammarCheckCallbacks />;
+      },
+    },
+    {
+      title: 'Clear text on submit - Multiline Textfield',
+      render: function (): React.Node {
+        return (
+          <View>
+            <Text>Default submit key (Enter):</Text>
+            <TextInput
+              multiline={true}
+              clearTextOnSubmit={true}
+              style={styles.multiline}
+            />
+            <Text>Custom submit key (Enter): - same as above</Text>
+            <TextInput
+              multiline={true}
+              clearTextOnSubmit={true}
+              style={styles.multiline}
+              submitKeyEvents={[{key: 'Enter'}]}
+            />
+            <Text>Custom submit key (CMD + Enter):</Text>
+            <TextInput
+              multiline={true}
+              clearTextOnSubmit={true}
+              style={styles.multiline}
+              submitKeyEvents={[{key: 'Enter', metaKey: true}]}
+            />
+            <Text>Custom submit key (Shift + Enter):</Text>
+            <TextInput
+              multiline={true}
+              clearTextOnSubmit={true}
+              style={styles.multiline}
+              submitKeyEvents={[{key: 'Enter', shiftKey: true}]}
+            />
+          </View>
+        );
+      },
+    },
+    {
+      title:
+        'onDragEnter, onDragLeave and onDrop - Single- & MultiLineTextInput',
+      render: function (): React.Node {
+        return <OnDragEnterOnDragLeaveOnDrop />;
+      },
+    },
+    {
+      title: 'onPaste - MultiLineTextInput',
+      render: function (): React.Node {
+        return <OnPaste />;
+      },
+    },
+  );
+}
+// [macOS]

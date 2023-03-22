@@ -1,11 +1,11 @@
-/**
- * Copyright (c) 2015-present, Facebook, Inc.
+/*
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-// TODO(macOS GH#774)
+// [macOS]
 
 #include <TargetConditionals.h>
 
@@ -14,6 +14,8 @@
 #if !TARGET_OS_OSX
 
 #import <UIKit/UIKit.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 //
 // functionally equivalent types
@@ -59,11 +61,12 @@ UIKIT_STATIC_INLINE CGPathRef UIBezierPathCreateCGPathRef(UIBezierPath *path)
 //
 
 // UIView
-#define RCTPlatformView         UIView
-#define RCTUIView UIView // TODO(macOS ISS#3536887)
-#define RCTUIScrollView UIScrollView // TODO(macOS ISS#3536887)
+#define RCTPlatformView UIView
+#define RCTUIView UIView
+#define RCTUIScrollView UIScrollView
+#define RCTPlatformWindow UIWindow
 
-UIKIT_STATIC_INLINE RCTPlatformView *RCTUIViewHitTestWithEvent(RCTPlatformView *view, CGPoint point, UIEvent *event)
+UIKIT_STATIC_INLINE RCTPlatformView *RCTUIViewHitTestWithEvent(RCTPlatformView *view, CGPoint point, __unused UIEvent *__nullable event)
 {
   return [view hitTest:point withEvent:event];
 }
@@ -76,11 +79,6 @@ UIKIT_STATIC_INLINE BOOL RCTUIViewSetClipsToBounds(RCTPlatformView *view)
 UIKIT_STATIC_INLINE void RCTUIViewSetContentModeRedraw(UIView *view)
 {
   view.contentMode = UIViewContentModeRedraw;
-}
-
-UIKIT_STATIC_INLINE BOOL RCTUIViewDrawViewHierarchyInRectAfterScreenUpdates(RCTPlatformView *view, CGRect rect, BOOL afterUpdates)
-{
-  return [view drawViewHierarchyInRect:rect afterScreenUpdates:afterUpdates];
 }
 
 UIKIT_STATIC_INLINE BOOL RCTUIViewIsDescendantOfView(RCTPlatformView *view, RCTPlatformView *parent)
@@ -119,9 +117,13 @@ UIKIT_STATIC_INLINE CGFloat UIFontLineHeight(UIFont *font)
   return [font lineHeight];
 }
 
+NS_ASSUME_NONNULL_END
+
 #else // TARGET_OS_OSX [
 
 #import <AppKit/AppKit.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 //
 // semantically equivalent constants
@@ -209,8 +211,7 @@ enum : NSUInteger
 };
 
 // UIView/NSView.h
-enum : NSInteger
-{
+typedef NS_ENUM(NSInteger, UIViewContentMode) {
   UIViewContentModeScaleAspectFill = NSViewLayerContentsPlacementScaleProportionallyToFill,
   UIViewContentModeScaleAspectFit  = NSViewLayerContentsPlacementScaleProportionallyToFit,
   UIViewContentModeScaleToFill     = NSViewLayerContentsPlacementScaleAxesIndependently,
@@ -314,6 +315,9 @@ NS_INLINE NSEdgeInsets UIEdgeInsetsMake(CGFloat top, CGFloat left, CGFloat botto
 // These types have the same purpose but may differ semantically. Use with care!
 
 #define UIEvent NSEvent
+#define UITouchType NSTouchType
+#define UIEventButtonMask NSEventButtonMask
+#define UIKeyModifierFlags NSEventModifierFlags
 
 // UIGestureRecognizer
 #define UIGestureRecognizer NSGestureRecognizer
@@ -324,6 +328,11 @@ NS_INLINE NSEdgeInsets UIEdgeInsetsMake(CGFloat top, CGFloat left, CGFloat botto
 
 // UIImage
 @compatibility_alias UIImage NSImage;
+
+typedef NS_ENUM(NSInteger, UIImageRenderingMode) {
+    UIImageRenderingModeAlwaysOriginal,
+    UIImageRenderingModeAlwaysTemplate,
+};
 
 #ifdef __cplusplus
 extern "C"
@@ -361,7 +370,9 @@ CGPathRef UIBezierPathCreateCGPathRef(UIBezierPath *path);
 // UIView
 #define RCTPlatformView NSView
 
-@interface RCTUIView : NSView // TODO(macOS ISS#3536887)
+#define RCTPlatformWindow NSWindow
+
+@interface RCTUIView : RCTPlatformView
 
 @property (nonatomic, readonly) BOOL canBecomeFirstResponder;
 - (BOOL)becomeFirstResponder;
@@ -369,7 +380,7 @@ CGPathRef UIBezierPathCreateCGPathRef(UIBezierPath *path);
 
 @property (nonatomic, getter=isUserInteractionEnabled) BOOL userInteractionEnabled;
 
-- (NSView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event;
+- (NSView *)hitTest:(CGPoint)point withEvent:(UIEvent *_Nullable)event;
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event;
 
 - (void)insertSubview:(NSView *)view atIndex:(NSInteger)index;
@@ -380,13 +391,13 @@ CGPathRef UIBezierPathCreateCGPathRef(UIBezierPath *path);
 - (void)layoutIfNeeded;
 
 - (void)layoutSubviews;
+- (NSArray<RCTUIView *> *)reactZIndexSortedSubviews; // [macOS]
 
 - (void)setNeedsDisplay;
 
 // An override of an undocumented API that controls the layer's masksToBounds property
 @property (nonatomic) BOOL clipsToBounds;
 @property (nonatomic, copy) NSColor *backgroundColor;
-@property (nonatomic, readwrite, getter=isOpaque) BOOL opaque;
 @property (nonatomic) CGAffineTransform transform;
 
 /**
@@ -403,13 +414,16 @@ CGPathRef UIBezierPathCreateCGPathRef(UIBezierPath *path);
  * Specifies whether focus ring should be drawn when the view has the first responder status.
  */
 @property (nonatomic, assign) BOOL enableFocusRing;
-
+/**
+ * The z-index of the view.
+ */
+@property (nonatomic, assign) NSInteger reactZIndex;
 
 @end
 
 // UIScrollView
 
-@interface RCTUIScrollView : NSScrollView // TODO(macOS ISS#3536887)
+@interface RCTUIScrollView : NSScrollView
 
 // UIScrollView properties missing in NSScrollView
 @property (nonatomic, assign) CGPoint contentOffset;
@@ -421,10 +435,20 @@ CGPathRef UIBezierPathCreateCGPathRef(UIBezierPath *path);
 @property (nonatomic, assign) CGFloat zoomScale;
 @property (nonatomic, assign) BOOL alwaysBounceHorizontal;
 @property (nonatomic, assign) BOOL alwaysBounceVertical;
+// macOS specific properties
+@property (nonatomic, assign) BOOL enableFocusRing;
+@property (nonatomic, assign, getter=isScrollEnabled) BOOL scrollEnabled;
 
 @end
 
-NS_INLINE RCTPlatformView *RCTUIViewHitTestWithEvent(RCTPlatformView *view, CGPoint point, __unused UIEvent *event)
+@interface RCTClipView : NSClipView
+
+@property (nonatomic, assign) BOOL constrainScrolling;
+
+@end
+
+
+NS_INLINE RCTPlatformView *RCTUIViewHitTestWithEvent(RCTPlatformView *view, CGPoint point, __unused UIEvent *__nullable event)
 {
   return [view hitTest:point];
 }
@@ -434,14 +458,6 @@ BOOL RCTUIViewSetClipsToBounds(RCTPlatformView *view);
 NS_INLINE void RCTUIViewSetContentModeRedraw(RCTPlatformView *view)
 {
   view.layerContentsRedrawPolicy = NSViewLayerContentsRedrawDuringViewResize;
-}
-
-NS_INLINE BOOL RCTUIViewDrawViewHierarchyInRectAfterScreenUpdates(RCTPlatformView *view, CGRect rect, __unused BOOL afterUpdates)
-{
-  RCTAssert(afterUpdates, @"We're redrawing the view so it will necessarily include the latest changes.");
-  (void) afterUpdates;
-  [view displayRectIgnoringOpacity:NSRectToCGRect(rect)];
-  return YES;
 }
 
 NS_INLINE BOOL RCTUIViewIsDescendantOfView(RCTPlatformView *view, RCTPlatformView *parent)
@@ -466,4 +482,104 @@ NS_INLINE CGRect CGRectValue(NSValue *value)
   return rect;
 }
 
+NS_ASSUME_NONNULL_END
+
 #endif // ] TARGET_OS_OSX
+
+#if !TARGET_OS_OSX
+typedef UIApplication RCTUIApplication;
+#else
+typedef NSApplication RCTUIApplication;
+#endif
+
+//
+// fabric component types
+//
+
+// RCTUISlider
+
+#if !TARGET_OS_OSX
+typedef UISlider RCTUISlider;
+#else
+@protocol RCTUISliderDelegate;
+
+@interface RCTUISlider : NSSlider
+NS_ASSUME_NONNULL_BEGIN
+@property (nonatomic, weak) id<RCTUISliderDelegate> delegate;
+@property (nonatomic, readonly) BOOL pressed;
+@property (nonatomic, assign) float value;
+@property (nonatomic, assign) float minimumValue;
+@property (nonatomic, assign) float maximumValue;
+@property (nonatomic, strong) NSColor *minimumTrackTintColor;
+@property (nonatomic, strong) NSColor *maximumTrackTintColor;
+
+- (void)setValue:(float)value animated:(BOOL)animated;
+NS_ASSUME_NONNULL_END
+@end
+#endif
+
+#if TARGET_OS_OSX // [macOS
+@protocol RCTUISliderDelegate <NSObject>
+@optional
+NS_ASSUME_NONNULL_BEGIN
+- (void)slider:(RCTUISlider *)slider didPress:(BOOL)press;
+NS_ASSUME_NONNULL_END
+@end
+#endif // macOS]
+
+// RCTUILabel
+
+#if !TARGET_OS_OSX
+typedef UILabel RCTUILabel;
+#else
+@interface RCTUILabel : NSTextField
+NS_ASSUME_NONNULL_BEGIN
+@property(nonatomic, copy) NSString* _Nullable text;
+@property(nonatomic, assign) NSInteger numberOfLines;
+@property(nonatomic, assign) NSTextAlignment textAlignment;
+NS_ASSUME_NONNULL_END
+@end
+#endif
+
+// RCTUISwitch
+
+#if !TARGET_OS_OSX
+typedef UISwitch RCTUISwitch;
+#else
+@interface RCTUISwitch : NSSwitch
+NS_ASSUME_NONNULL_BEGIN
+@property (nonatomic, assign, getter=isOn) BOOL on;
+
+- (void)setOn:(BOOL)on animated:(BOOL)animated;
+
+NS_ASSUME_NONNULL_END
+@end
+#endif
+
+// RCTUIActivityIndicatorView
+
+#if !TARGET_OS_OSX
+typedef UIActivityIndicatorView RCTUIActivityIndicatorView;
+#else
+@interface RCTUIActivityIndicatorView : NSProgressIndicator
+NS_ASSUME_NONNULL_BEGIN
+@property (nonatomic, assign) UIActivityIndicatorViewStyle activityIndicatorViewStyle;
+@property (nonatomic, assign) BOOL hidesWhenStopped;
+@property (nullable, readwrite, nonatomic, strong) RCTUIColor *color;
+@property (nonatomic, readonly, getter=isAnimating) BOOL animating;
+
+- (void)startAnimating;
+- (void)stopAnimating;
+NS_ASSUME_NONNULL_END
+@end
+
+#endif
+
+// RCTUITouch
+
+#if !TARGET_OS_OSX
+typedef UITouch RCTUITouch;
+#else
+@interface RCTUITouch : NSEvent
+@end
+#endif

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,20 +8,18 @@
  * @format
  */
 
-'use strict';
+import type {ImageURISource} from './ImageSource';
 
 import Platform from '../Utilities/Platform';
-
-import type {ImageURISource} from './ImageSource';
 
 type NativeImageSourceSpec = $ReadOnly<{|
   android?: string,
   ios?: string,
-  macos?: string, // TODO(macOS GH#774)
+  macos?: string, // [macOS]
   default?: string,
 
   // For more details on width and height, see
-  // https://reactnative.dev/docs/images.html#why-not-automatically-size-everything
+  // https://reactnative.dev/docs/images#why-not-automatically-size-everything
   height: number,
   width: number,
 |}>;
@@ -39,7 +37,7 @@ type NativeImageSourceSpec = $ReadOnly<{|
  * automates measurements and allows adding new images without rebuilding the
  * native app. For more details visit:
  *
- *   https://reactnative.dev/docs/images.html
+ *   https://reactnative.dev/docs/images
  *
  */
 function nativeImageSource(spec: NativeImageSourceSpec): ImageURISource {
@@ -47,7 +45,7 @@ function nativeImageSource(spec: NativeImageSourceSpec): ImageURISource {
     android: spec.android,
     default: spec.default,
     ios: spec.ios,
-    macos: spec.macos, // TODO(macOS GH#774)
+    macos: spec.macos, // [macOS]
   });
   if (uri == null) {
     console.warn(

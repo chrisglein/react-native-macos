@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -14,7 +14,7 @@
 #import <react/renderer/components/rncore/Props.h>
 #import <react/renderer/components/rncore/RCTComponentViewHelpers.h>
 
-#import "FBRCTFabricComponentsPlugins.h"
+#import "RCTFabricComponentsPlugins.h"
 
 using namespace facebook::react;
 
@@ -22,29 +22,29 @@ using namespace facebook::react;
 @end
 
 @implementation RCTSwitchComponentView {
-  UISwitch *_switchView;
+  RCTUISwitch *_switchView; // [macOS]
+  BOOL _isInitialValueSet;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
   if (self = [super initWithFrame:frame]) {
-    _switchView = [[UISwitch alloc] initWithFrame:self.bounds];
+    static const auto defaultProps = std::make_shared<const SwitchProps>();
+    _props = defaultProps;
 
+    _switchView = [[RCTUISwitch alloc] initWithFrame:self.bounds]; // [macOS]
+
+#if !TARGET_OS_OSX // [macOS]
     [_switchView addTarget:self action:@selector(onChange:) forControlEvents:UIControlEventValueChanged];
+#else // [macOS
+    [_switchView setTarget:self];
+    [_switchView setAction:@selector(onChange:)];
+#endif // macOS]
 
     self.contentView = _switchView;
-
-    [self setPropsToDefault];
   }
 
   return self;
-}
-
-- (void)setPropsToDefault
-{
-  static const auto defaultProps = std::make_shared<const SwitchProps>();
-  _props = defaultProps;
-  _switchView.on = defaultProps->value;
 }
 
 #pragma mark - RCTComponentViewProtocol
@@ -52,7 +52,7 @@ using namespace facebook::react;
 - (void)prepareForRecycle
 {
   [super prepareForRecycle];
-  [self setPropsToDefault];
+  _isInitialValueSet = NO;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -67,7 +67,9 @@ using namespace facebook::react;
 
   // `value`
   if (oldSwitchProps.value != newSwitchProps.value) {
-    _switchView.on = newSwitchProps.value;
+    BOOL shouldAnimate = _isInitialValueSet == YES;
+    [_switchView setOn:newSwitchProps.value animated:shouldAnimate];
+    _isInitialValueSet = YES;
   }
 
   // `disabled`
@@ -75,25 +77,27 @@ using namespace facebook::react;
     _switchView.enabled = !newSwitchProps.disabled;
   }
 
+#if !TARGET_OS_OSX // [macOS]
   // `tintColor`
   if (oldSwitchProps.tintColor != newSwitchProps.tintColor) {
-    _switchView.tintColor = RCTUIColorFromSharedColor(newSwitchProps.tintColor);
+    _switchView.tintColor = RCTUIColorFromSharedColor(newSwitchProps.tintColor); // [macOS]
   }
 
   // `onTintColor
   if (oldSwitchProps.onTintColor != newSwitchProps.onTintColor) {
-    _switchView.onTintColor = RCTUIColorFromSharedColor(newSwitchProps.onTintColor);
+    _switchView.onTintColor = RCTUIColorFromSharedColor(newSwitchProps.onTintColor); // [macOS]
   }
 
   // `thumbTintColor`
   if (oldSwitchProps.thumbTintColor != newSwitchProps.thumbTintColor) {
-    _switchView.thumbTintColor = RCTUIColorFromSharedColor(newSwitchProps.thumbTintColor);
+    _switchView.thumbTintColor = RCTUIColorFromSharedColor(newSwitchProps.thumbTintColor); // [macOS]
   }
+#endif // [macOS]
 
   [super updateProps:props oldProps:oldProps];
 }
 
-- (void)onChange:(UISwitch *)sender
+- (void)onChange:(RCTUISwitch *)sender // [macOS]
 {
   const auto &props = *std::static_pointer_cast<const SwitchProps>(_props);
   if (props.value == sender.on) {

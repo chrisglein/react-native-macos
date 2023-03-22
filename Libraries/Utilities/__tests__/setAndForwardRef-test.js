@@ -1,32 +1,31 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  *
  * @flow
  * @format
- * @emails oncall+react_native
+ * @oncall react_native
  */
 
 'use strict';
 
+const setAndForwardRef = require('../setAndForwardRef');
 const React = require('react');
 const ReactTestRenderer = require('react-test-renderer');
 
-const setAndForwardRef = require('../setAndForwardRef');
-
 describe('setAndForwardRef', () => {
-  let innerFuncCalled = false;
-  let outerFuncCalled = false;
+  let innerFuncCalled: ?boolean = false;
+  let outerFuncCalled: ?boolean = false;
 
   class ForwardedComponent extends React.Component<{||}> {
-    testFunc() {
+    testFunc(): any {
       innerFuncCalled = true;
       return true;
     }
 
-    render() {
+    render(): any {
       return null;
     }
   }
@@ -38,7 +37,7 @@ describe('setAndForwardRef', () => {
 
   class TestComponent extends React.Component<Props> {
     _nativeRef: ?React.ElementRef<typeof ForwardedComponent> = null;
-    _setNativeRef = setAndForwardRef({
+    _setNativeRef: (ref: React.ElementRef<any>) => void = setAndForwardRef({
       getForwardedRef: () => this.props.forwardedRef,
       setLocalRef: ref => {
         this._nativeRef = ref;
@@ -51,7 +50,7 @@ describe('setAndForwardRef', () => {
       }
     }
 
-    render() {
+    render(): React.Node {
       return <ForwardedComponent ref={this._setNativeRef} />;
     }
   }
@@ -85,14 +84,14 @@ describe('setAndForwardRef', () => {
   it('should forward refs (createRef-based)', () => {
     const createdRef = React.createRef<typeof ForwardedComponent>();
 
-    /* $FlowFixMe(>=0.89.0 site=react_native_fb) This comment suppresses an
-     * error found when Flow v0.89 was deployed. To see the error, delete this
-     * comment and run Flow. */
+    /* $FlowFixMe[incompatible-type] (>=0.89.0 site=react_native_fb) This
+     * comment suppresses an error found when Flow v0.89 was deployed. To see
+     * the error, delete this comment and run Flow. */
     ReactTestRenderer.create(<TestComponentWithRef ref={createdRef} />);
 
-    /* $FlowFixMe(>=0.87.0 site=react_native_fb) This comment suppresses an
-     * error found when Flow v0.87 was deployed. To see the error, delete this
-     * comment and run Flow. */
+    /* $FlowFixMe[prop-missing] (>=0.87.0 site=react_native_fb) This comment
+     * suppresses an error found when Flow v0.87 was deployed. To see the
+     * error, delete this comment and run Flow. */
     const val = createdRef.current && createdRef.current.testFunc();
 
     expect(innerFuncCalled).toBe(true);
@@ -111,7 +110,7 @@ describe('setAndForwardRef', () => {
         /* eslint-enable react/no-string-refs */
       }
 
-      render() {
+      render(): React.Node {
         /**
          * Can't directly pass the test component to `ReactTestRenderer.create`,
          * otherwise it will throw. See:

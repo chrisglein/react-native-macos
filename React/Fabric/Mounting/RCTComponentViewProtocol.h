@@ -1,11 +1,11 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-#import <UIKit/UIKit.h>
+#import <React/RCTUIKit.h> // [macOS]
 
 #import <react/renderer/componentregistry/ComponentDescriptorProvider.h>
 #import <react/renderer/core/EventEmitter.h>
@@ -54,14 +54,14 @@ typedef NS_OPTIONS(NSInteger, RNComponentViewUpdateMask) {
  * component view.
  * Receiver must add `childComponentView` as a subview.
  */
-- (void)mountChildComponentView:(UIView<RCTComponentViewProtocol> *)childComponentView index:(NSInteger)index;
+- (void)mountChildComponentView:(RCTUIView<RCTComponentViewProtocol> *)childComponentView index:(NSInteger)index; // [macOS]
 
 /*
  * Called for unmounting (detaching) a child component view from `self`
  * component view.
  * Receiver must remove `childComponentView` as a subview.
  */
-- (void)unmountChildComponentView:(UIView<RCTComponentViewProtocol> *)childComponentView index:(NSInteger)index;
+- (void)unmountChildComponentView:(RCTUIView<RCTComponentViewProtocol> *)childComponentView index:(NSInteger)index; // [macOS]
 
 /*
  * Called for updating component's props.
@@ -111,10 +111,22 @@ typedef NS_OPTIONS(NSInteger, RNComponentViewUpdateMask) {
  */
 - (void)prepareForRecycle;
 
-/**
+/*
  * Read the last props used to update the view.
  */
-- (facebook::react::SharedProps)props;
+- (facebook::react::Props::Shared)props;
+
+- (BOOL)isJSResponder;
+- (void)setIsJSResponder:(BOOL)isJSResponder;
+
+- (NSNumber *)reactTag; // [macOS]
+- (void)setReactTag:(NSNumber *)reactTag; // [macOS]
+
+/*
+ * This is broken. Do not use.
+ */
+- (void)setPropKeysManagedByAnimated_DO_NOT_USE_THIS_IS_BROKEN:(nullable NSSet<NSString *> *)props;
+- (nullable NSSet<NSString *> *)propKeysManagedByAnimated_DO_NOT_USE_THIS_IS_BROKEN;
 
 @end
 

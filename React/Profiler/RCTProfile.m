@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -13,7 +13,7 @@
 #import <objc/runtime.h>
 #import <stdatomic.h>
 
-#import <React/RCTUIKit.h> // TODO(macOS GH#774)
+#import <React/RCTUIKit.h> // [macOS]
 
 #import "RCTAssert.h"
 #import "RCTBridge+Private.h"
@@ -49,10 +49,10 @@ static NSMutableDictionary *RCTProfileOngoingEvents;
 static NSTimeInterval RCTProfileStartTime;
 static NSUInteger RCTProfileEventID = 0;
 static __weak RCTBridge *_RCTProfilingBridge;
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
-static CADisplayLink *RCTProfileDisplayLink; // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
+static CADisplayLink *RCTProfileDisplayLink; // [macOS]
 static UIWindow *RCTProfileControlsWindow;
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
 
 #pragma mark - Macros
 
@@ -204,10 +204,10 @@ void RCTProfileTrampolineEnd(void)
   RCT_PROFILE_END_EVENT(RCTProfileTagAlways, @"objc_call,modules,auto");
 }
 
-static RCTUIView *(*originalCreateView)(RCTComponentData *, SEL, NSNumber *, NSNumber *); // TODO(macOS GH#774)
-static RCTUIView *RCTProfileCreateView(RCTComponentData *self, SEL _cmd, NSNumber *tag, NSNumber *rootTag) // TODO(macOS GH#774)
+static RCTUIView *(*originalCreateView)(RCTComponentData *, SEL, NSNumber *, NSNumber *); // [macOS]
+static RCTUIView *RCTProfileCreateView(RCTComponentData *self, SEL _cmd, NSNumber *tag, NSNumber *rootTag) // [macOS]
 {
-  RCTUIView *view = originalCreateView(self, _cmd, tag, rootTag); // TODO(macOS GH#774)
+  RCTUIView *view = originalCreateView(self, _cmd, tag, rootTag); // [macOS]
   RCTProfileHookInstance(view);
   return view;
 }
@@ -369,7 +369,7 @@ void RCTProfileUnhookModules(RCTBridge *bridge)
 
 #pragma mark - Private ObjC class only used for the vSYNC CADisplayLink target
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
 @interface RCTProfile : NSObject
 @end
 
@@ -427,7 +427,7 @@ void RCTProfileUnhookModules(RCTBridge *bridge)
 }
 
 @end
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
 
 #pragma mark - Public Functions
 
@@ -473,23 +473,24 @@ void RCTProfileInit(RCTBridge *bridge)
     NSArray *orderedThreads =
         @[ @"JS async", @"RCTPerformanceLogger", @"com.facebook.react.JavaScript", @(RCTUIManagerQueueName), @"main" ];
     [orderedThreads enumerateObjectsUsingBlock:^(NSString *thread, NSUInteger idx, __unused BOOL *stop) {
-      RCTProfileAddEvent(kProfileTraceEvents,
-                         @"ph"
-                         : @"M", // metadata event
-                           @"name"
-                         : @"thread_sort_index", @"tid"
-                         : thread, @"args"
-                         :
-                         @{@"sort_index" : @(-1000 + (NSInteger)idx)});
+      RCTProfileAddEvent(
+          kProfileTraceEvents,
+          @"ph"
+          : @"M", // metadata event
+            @"name"
+          : @"thread_sort_index", @"tid"
+          : thread, @"args"
+          :
+          @{@"sort_index" : @(-1000 + (NSInteger)idx)});
     }];
   });
 
   RCTProfileHookModules(bridge);
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   RCTProfileDisplayLink = [CADisplayLink displayLinkWithTarget:[RCTProfile class] selector:@selector(vsync:)];
   [RCTProfileDisplayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
 
   [[NSNotificationCenter defaultCenter] postNotificationName:RCTProfileDidStartProfiling object:bridge];
 }
@@ -504,10 +505,10 @@ void RCTProfileEnd(RCTBridge *bridge, void (^callback)(NSString *))
 
   [[NSNotificationCenter defaultCenter] postNotificationName:RCTProfileDidEndProfiling object:bridge];
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   [RCTProfileDisplayLink invalidate];
   RCTProfileDisplayLink = nil;
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
 
   RCTProfileUnhookModules(bridge);
 
@@ -753,13 +754,7 @@ void RCTProfileSendResult(RCTBridge *bridge, NSString *route, NSData *data)
               NSString *message = [[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding];
 
               if (message.length) {
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
-                NSAlert *alert = [NSAlert new];
-                alert.messageText = @"Profile";
-                alert.informativeText = message;
-                [alert addButtonWithTitle:@"OK"];
-                [alert runModal];
-#else // ]TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
                 dispatch_async(dispatch_get_main_queue(), ^{
                   UIAlertController *alertController =
                       [UIAlertController alertControllerWithTitle:@"Profile"
@@ -770,7 +765,13 @@ void RCTProfileSendResult(RCTBridge *bridge, NSString *route, NSData *data)
                                                                     handler:nil]];
                   [RCTPresentedViewController() presentViewController:alertController animated:YES completion:nil];
                 });
-#endif // TODO(macOS GH#774)
+#else // [macOS               
+                NSAlert *alert = [NSAlert new];
+                alert.messageText = @"Profile";
+                alert.informativeText = message;
+                [alert addButtonWithTitle:@"OK"];
+                [alert runModal];
+#endif // macOS]
               }
             }
           }];
@@ -778,7 +779,7 @@ void RCTProfileSendResult(RCTBridge *bridge, NSString *route, NSData *data)
   [task resume];
 }
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
 void RCTProfileShowControls(void)
 {
   static const CGFloat height = 30;
@@ -817,6 +818,6 @@ void RCTProfileHideControls(void)
   RCTProfileControlsWindow.hidden = YES;
   RCTProfileControlsWindow = nil;
 }
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
 
 #endif

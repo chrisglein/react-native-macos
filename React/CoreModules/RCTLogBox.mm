@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -13,7 +13,6 @@
 #import <React/RCTLog.h>
 #import <React/RCTRedBoxSetEnabled.h>
 #import <React/RCTSurface.h>
-
 #import "CoreModulesPlugins.h"
 
 #if RCT_DEV_MENU
@@ -22,7 +21,8 @@
 @end
 
 @implementation RCTLogBox {
-  RCTLogBoxWindow *_window; // TODO(macOS GH#774) Renamed from _view to _window
+  RCTLogBoxView *_view;
+  __weak id<RCTSurfacePresenterStub> _bridgelessSurfacePresenter;
 }
 
 @synthesize bridge = _bridge;
@@ -34,6 +34,11 @@ RCT_EXPORT_MODULE()
   return YES;
 }
 
+- (void)setSurfacePresenter:(id<RCTSurfacePresenterStub>)surfacePresenter
+{
+  _bridgelessSurfacePresenter = surfacePresenter;
+}
+
 RCT_EXPORT_METHOD(show)
 {
   if (RCTRedBoxGetEnabled()) {
@@ -43,22 +48,37 @@ RCT_EXPORT_METHOD(show)
       if (!strongSelf) {
         return;
       }
-      if (!strongSelf->_window) { // TODO(macOS GH#774) Renamed from _view to _window
-        if (self->_bridge) {
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
-          strongSelf->_window = [[RCTLogBoxWindow alloc] initWithFrame:[UIScreen mainScreen].bounds bridge:self->_bridge]; // TODO(macOS GH#774) Renamed from _view to _window
-#else // [TODO(macOS GH#774)
-          strongSelf->_window = [[RCTLogBoxWindow alloc] initWithBridge:self->_bridge]; // TODO(macOS GH#774) Renamed from _view to _window
-#endif // ]TODO(macOS GH#774)
-        } else {
-          NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:strongSelf, @"logbox", nil];
-          [[NSNotificationCenter defaultCenter] postNotificationName:@"CreateLogBoxSurface"
-                                                              object:nil
-                                                            userInfo:userInfo];
-          return;
-        }
+
+      if (strongSelf->_view) {
+        [strongSelf->_view show];
+        return;
       }
-      [strongSelf->_window show];
+
+      if (strongSelf->_bridgelessSurfacePresenter) {
+#if !TARGET_OS_OSX // [macOS]
+        strongSelf->_view = [[RCTLogBoxView alloc] initWithWindow:RCTKeyWindow()
+                                                 surfacePresenter:strongSelf->_bridgelessSurfacePresenter];
+#else // [macOS
+        strongSelf->_view = [[RCTLogBoxView alloc] initWithSurfacePresenter:strongSelf->_bridgelessSurfacePresenter];
+#endif // macOS]
+        [strongSelf->_view show];
+      } else if (strongSelf->_bridge && strongSelf->_bridge.valid) {
+        if (strongSelf->_bridge.surfacePresenter) {
+#if !TARGET_OS_OSX // [macOS]      
+          strongSelf->_view = [[RCTLogBoxView alloc] initWithWindow:RCTKeyWindow()
+                                                   surfacePresenter:strongSelf->_bridge.surfacePresenter];
+#else // [macOS
+          strongSelf->_view = [[RCTLogBoxView alloc] initWithSurfacePresenter:strongSelf->_bridge.surfacePresenter];
+#endif // macOS]
+        } else {
+#if !TARGET_OS_OSX // [macOS]     
+          strongSelf->_view = [[RCTLogBoxView alloc] initWithWindow:RCTKeyWindow() bridge:strongSelf->_bridge];
+#else // [macOS
+          strongSelf->_view = [[RCTLogBoxView alloc] initWithBridge:self->_bridge];
+#endif // macOS]
+        }
+        [strongSelf->_view show];
+      }
     });
   }
 }
@@ -72,10 +92,8 @@ RCT_EXPORT_METHOD(hide)
       if (!strongSelf) {
         return;
       }
-#if TARGET_OS_OSX // TODO(macOS GH#774)
-      [strongSelf->_window hide];
-#endif // TODO(macOS GH#774)
-      strongSelf->_window = nil;
+      [strongSelf->_view setHidden:YES];
+      strongSelf->_view = nil;
     });
   }
 }
@@ -86,9 +104,9 @@ RCT_EXPORT_METHOD(hide)
   return std::make_shared<facebook::react::NativeLogBoxSpecJSI>(params);
 }
 
-- (void)setRCTLogBoxWindow:(RCTLogBoxWindow *)window // TODO(macOS GH#774) Renamed from _view to _window
+- (void)setRCTLogBoxView:(RCTLogBoxView *)view
 {
-  self->_window = window;
+  self->_view = view;
 }
 
 @end

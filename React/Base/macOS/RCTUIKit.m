@@ -5,13 +5,18 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-// TODO(macOS GH#774)
+// [macOS]
 
-#import <React/RCTUIKit.h> // TODO(macOS GH#774)
+#if TARGET_OS_OSX
+
+#import <React/RCTUIKit.h>
 
 #import <React/RCTAssert.h>
 
 #import <objc/runtime.h>
+
+#import <CoreImage/CIFilter.h>
+#import <CoreImage/CIVector.h>
 
 static char RCTGraphicsContextSizeKey;
 
@@ -67,7 +72,9 @@ NSImage *UIGraphicsGetImageFromCurrentImageContext(void)
 		CGImageRef cgImage = CGBitmapContextCreateImage([graphicsContext CGContext]);
 
 		if (cgImage != NULL) {
-			image = [[NSImage alloc] initWithCGImage:cgImage size:[sizeValue sizeValue]];
+			NSBitmapImageRep *imageRep = [[NSBitmapImageRep alloc] initWithCGImage:cgImage];
+			image = [[NSImage alloc] initWithSize:[sizeValue sizeValue]];
+			[image addRepresentation:imageRep];
 			CFRelease(cgImage);
 		}
 	}
@@ -131,7 +138,7 @@ NSData *UIImagePNGRepresentation(NSImage *image) {
 NSData *UIImageJPEGRepresentation(NSImage *image, CGFloat compressionQuality) {
   return NSImageDataForFileType(image,
                                 NSBitmapImageFileTypeJPEG,
-                                @{NSImageCompressionFactor: @(1.0)});
+                                @{NSImageCompressionFactor: @(compressionQuality)});
 }
 
 // UIBezierPath
@@ -202,12 +209,11 @@ CGPathRef UIBezierPathCreateCGPathRef(UIBezierPath *bezierPath)
 // UIView
 
 
-@implementation RCTUIView // TODO(macOS ISS#3536887)
+@implementation RCTUIView
 {
 @private
   NSColor *_backgroundColor;
   BOOL _clipsToBounds;
-  BOOL _opaque;
   BOOL _userInteractionEnabled;
 }
 
@@ -285,11 +291,6 @@ static RCTUIView *RCTUIViewCommonInit(RCTUIView *self)
 - (BOOL)isFlipped
 {
   return YES;
-}
-
-- (BOOL)isOpaque
-{
-  return _opaque;
 }
 
 - (CGFloat)alpha
@@ -405,6 +406,27 @@ static RCTUIView *RCTUIViewCommonInit(RCTUIView *self)
   [super layout];
 }
 
+- (NSArray<RCTUIView *> *)reactZIndexSortedSubviews
+{
+  // Check if sorting is required - in most cases it won't be.
+  BOOL sortingRequired = NO;
+  for (RCTUIView *subview in self.subviews) {
+    if (subview.reactZIndex != 0) {
+      sortingRequired = YES;
+      break;
+    }
+  }
+  return sortingRequired ? [self.subviews sortedArrayUsingComparator:^NSComparisonResult(RCTUIView *a, RCTUIView *b) {
+    if (a.reactZIndex > b.reactZIndex) {
+      return NSOrderedDescending;
+    } else {
+      // Ensure sorting is stable by treating equal zIndex as ascending so
+      // that original order is preserved.
+      return NSOrderedAscending;
+    }
+  }] : self.subviews;
+}
+
 - (void)setNeedsDisplay
 {
   self.needsDisplay = YES;
@@ -423,11 +445,40 @@ static RCTUIView *RCTUIViewCommonInit(RCTUIView *self)
   }
 }
 
+// We purposely don't use RCTCursor for the parameter type here because it would introduce an import cycle:
+// RCTUIKit > RCTCursor > RCTConvert > RCTUIKit
+- (void)setCursor:(NSInteger)cursor
+{
+  // This method is required to be defined due to [RCTVirtualTextViewManager view] returning a RCTUIView.
+}
+
 @end
 
 // RCTUIScrollView
 
-@implementation RCTUIScrollView // TODO(macOS ISS#3536887)
+@implementation RCTUIScrollView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+  if (self = [super initWithFrame:frame]) {
+    self.scrollEnabled = YES;
+  }
+  
+  return self;
+}
+
+- (void)setEnableFocusRing:(BOOL)enableFocusRing {
+  if (_enableFocusRing != enableFocusRing) {
+    _enableFocusRing = enableFocusRing;
+  }
+
+  if (enableFocusRing) {
+    // NSTextView has no focus ring by default so let's use the standard Aqua focus ring.
+    [self setFocusRingType:NSFocusRingTypeExterior];
+  } else {
+    [self setFocusRingType:NSFocusRingTypeNone];
+  }
+}
 
 // UIScrollView properties missing from NSScrollView
 - (CGPoint)contentOffset
@@ -537,3 +588,187 @@ BOOL RCTUIViewSetClipsToBounds(RCTPlatformView *view)
 
   return clipsToBounds;
 }
+
+@implementation RCTClipView
+
+- (instancetype)initWithFrame:(NSRect)frameRect
+{
+   if (self = [super initWithFrame:frameRect]) {
+    self.constrainScrolling = NO;
+    self.drawsBackground = NO;
+  }
+  
+  return self;
+}
+
+- (NSRect)constrainBoundsRect:(NSRect)proposedBounds
+{
+  if (self.constrainScrolling) {
+    return NSMakeRect(0, 0, 0, 0);
+  }
+  
+  return [super constrainBoundsRect:proposedBounds];
+}
+
+@end
+
+// RCTUISlider
+
+@implementation RCTUISlider {}
+
+- (void)setValue:(float)value animated:(__unused BOOL)animated
+{
+  self.animator.floatValue = value;
+}
+
+@end
+
+
+// RCTUILabel
+
+@implementation RCTUILabel {}
+
+- (instancetype)initWithFrame:(NSRect)frameRect
+{
+  if (self = [super initWithFrame:frameRect]) {
+    [self setBezeled:NO];
+    [self setDrawsBackground:NO];
+    [self setEditable:NO];
+    [self setSelectable:NO];
+    [self setWantsLayer:YES];
+  }
+  
+  return self;
+}
+
+@end
+
+@implementation RCTUISwitch
+
+- (BOOL)isOn
+{
+	return self.state == NSControlStateValueOn;
+}
+
+- (void)setOn:(BOOL)on
+{
+	self.state = on ? NSControlStateValueOn : NSControlStateValueOff;
+}
+
+- (void)setOn:(BOOL)on animated:(BOOL)animated {
+	self.state = on ? NSControlStateValueOn : NSControlStateValueOff;
+}
+
+@end
+
+// RCTUIActivityIndicatorView
+
+@interface RCTUIActivityIndicatorView ()
+@property (nonatomic, readwrite, getter=isAnimating) BOOL animating;
+@end
+
+@implementation RCTUIActivityIndicatorView {}
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+  if ((self = [super initWithFrame:frame])) {
+    self.displayedWhenStopped = NO;
+    self.style = NSProgressIndicatorStyleSpinning;
+  }
+  return self;
+}
+
+- (void)startAnimating
+{
+  // `wantsLayer` gets reset after the animation is stopped. We have to
+  // reset it in order for CALayer filters to take effect.
+  [self setWantsLayer:YES];
+  [self startAnimation:self];
+}
+
+- (void)stopAnimating
+{
+  [self stopAnimation:self];
+}
+
+- (void)startAnimation:(id)sender
+{
+  [super startAnimation:sender];
+  self.animating = YES;
+}
+
+- (void)stopAnimation:(id)sender
+{
+  [super stopAnimation:sender];
+  self.animating = NO;
+}
+
+- (void)setActivityIndicatorViewStyle:(UIActivityIndicatorViewStyle)activityIndicatorViewStyle
+{
+  _activityIndicatorViewStyle = activityIndicatorViewStyle;
+  
+  switch (activityIndicatorViewStyle) {
+    case UIActivityIndicatorViewStyleWhiteLarge:
+      self.controlSize = NSControlSizeRegular;
+      break;
+    case UIActivityIndicatorViewStyleWhite:
+      self.controlSize = NSControlSizeSmall;
+      break;
+    default:
+      break;
+  }
+}
+
+- (void)setColor:(RCTUIColor*)color
+{
+  if (_color != color) {
+    _color = color;
+    [self setNeedsDisplay:YES];
+  }
+}
+
+- (void)updateLayer
+{
+  [super updateLayer];
+  if (_color != nil) {
+    CGFloat r, g, b, a;
+    [[_color colorUsingColorSpace:[NSColorSpace genericRGBColorSpace]] getRed:&r green:&g blue:&b alpha:&a];
+
+    CIFilter *colorPoly = [CIFilter filterWithName:@"CIColorPolynomial"];
+    [colorPoly setDefaults];
+    
+    CIVector *redVector = [CIVector vectorWithX:r Y:0 Z:0 W:0];
+    CIVector *greenVector = [CIVector vectorWithX:g Y:0 Z:0 W:0];
+    CIVector *blueVector = [CIVector vectorWithX:b Y:0 Z:0 W:0];
+    [colorPoly setValue:redVector forKey:@"inputRedCoefficients"];
+    [colorPoly setValue:greenVector forKey:@"inputGreenCoefficients"];
+    [colorPoly setValue:blueVector forKey:@"inputBlueCoefficients"];
+    
+    [[self layer] setFilters:@[colorPoly]];
+  } else {
+    [[self layer] setFilters:nil];
+  }
+}
+
+- (void)setHidesWhenStopped:(BOOL)hidesWhenStopped
+{
+  self.displayedWhenStopped = !hidesWhenStopped;
+}
+
+- (BOOL)hidesWhenStopped
+{
+  return !self.displayedWhenStopped;
+}
+
+- (void)setHidden:(BOOL)hidden
+{
+  if ([self hidesWhenStopped] && ![self isAnimating]) {
+    [super setHidden:YES];
+  } else {
+    [super setHidden:hidden];
+  }
+}
+
+@end
+
+#endif

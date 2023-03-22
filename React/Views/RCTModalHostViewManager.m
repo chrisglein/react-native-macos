@@ -1,10 +1,11 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
+#if !TARGET_OS_OSX // [macOS]
 #import "RCTModalHostViewManager.h"
 
 #import "RCTBridge.h"
@@ -47,8 +48,6 @@ RCT_ENUM_CONVERTER(
 
 @interface RCTModalHostViewManager () <RCTModalHostViewInteractor>
 
-@property (nonatomic, copy) dispatch_block_t dismissWaitingBlock;
-
 @end
 
 @implementation RCTModalHostViewManager {
@@ -80,16 +79,9 @@ RCT_EXPORT_MODULE()
   if (_presentationBlock) {
     _presentationBlock([modalHostView reactViewController], viewController, animated, completionBlock);
   } else {
-    __weak typeof(self) weakself = self;
     [[modalHostView reactViewController] presentViewController:viewController
                                                       animated:animated
-                                                    completion:^{
-                                                      !completionBlock ?: completionBlock();
-                                                      __strong typeof(weakself) strongself = weakself;
-                                                      !strongself.dismissWaitingBlock
-                                                          ?: strongself.dismissWaitingBlock();
-                                                      strongself.dismissWaitingBlock = nil;
-                                                    }];
+                                                    completion:completionBlock];
   }
 }
 
@@ -105,13 +97,7 @@ RCT_EXPORT_MODULE()
   if (_dismissalBlock) {
     _dismissalBlock([modalHostView reactViewController], viewController, animated, completionBlock);
   } else {
-    self.dismissWaitingBlock = ^{
-      [viewController.presentingViewController dismissViewControllerAnimated:animated completion:completionBlock];
-    };
-    if (viewController.presentingViewController) {
-      self.dismissWaitingBlock();
-      self.dismissWaitingBlock = nil;
-    }
+    [viewController.presentingViewController dismissViewControllerAnimated:animated completion:completionBlock];
   }
 }
 
@@ -131,9 +117,18 @@ RCT_EXPORT_MODULE()
 RCT_EXPORT_VIEW_PROPERTY(animationType, NSString)
 RCT_EXPORT_VIEW_PROPERTY(presentationStyle, UIModalPresentationStyle)
 RCT_EXPORT_VIEW_PROPERTY(transparent, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(statusBarTranslucent, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(hardwareAccelerated, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(animated, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(onShow, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(identifier, NSNumber)
 RCT_EXPORT_VIEW_PROPERTY(supportedOrientations, NSArray)
 RCT_EXPORT_VIEW_PROPERTY(onOrientationChange, RCTDirectEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(visible, BOOL)
+RCT_EXPORT_VIEW_PROPERTY(onRequestClose, RCTDirectEventBlock)
+
+// Fabric only
+RCT_EXPORT_VIEW_PROPERTY(onDismiss, RCTDirectEventBlock)
 
 @end
+#endif // [macOS]

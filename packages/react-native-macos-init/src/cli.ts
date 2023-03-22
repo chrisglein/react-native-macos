@@ -14,15 +14,12 @@ import * as prompts from 'prompts';
 import * as findUp from 'find-up';
 import * as chalk from 'chalk';
 // @ts-ignore
-import * as Registry from 'npm-registry';
+import npmFetch from 'npm-registry';
 
-const npmConfReg = execSync('npm config get registry')
-  .toString()
-  .trim();
+const npmConfReg = execSync('npm config get registry').toString().trim();
 const NPM_REGISTRY_URL = validUrl.isUri(npmConfReg)
   ? npmConfReg
   : 'http://registry.npmjs.org';
-const npm = new Registry({registry: NPM_REGISTRY_URL});
 
 const argv = yargs.version(false).options({
   version: {
@@ -80,10 +77,7 @@ function getReactNativeAppName() {
   return name;
 }
 
-function getPackageVersion(
-  packageName: string,
-  exitOnError: boolean = true
-) {
+function getPackageVersion(packageName: string, exitOnError: boolean = true) {
   console.log(`Reading ${chalk.cyan(packageName)} version from node_modules…`);
 
   try {
@@ -112,16 +106,14 @@ function getReactNativeMacOSVersion() {
 }
 
 function errorOutOnUnsupportedVersionOfReactNative(rnVersion: string) {
-  printError(`Unsupported version of ${RNPKG}: ${chalk.cyan(
-    rnVersion,
-  )}
+  printError(`Unsupported version of ${RNPKG}: ${chalk.cyan(rnVersion)}
 ${MACOSPKG} supports ${RNPKG} versions ${chalk.cyan('>=0.60')}`);
   process.exit(EXITCODE_UNSUPPORTED_VERION_RN);
 }
 
 function getDefaultReactNativeMacOSSemVerForReactNativeVersion(
   rnVersion: string,
-  reactNativeMacOSLatestVersion: string
+  reactNativeMacOSLatestVersion: string,
 ) {
   const validVersion = semver.valid(rnVersion);
   if (validVersion) {
@@ -152,73 +144,48 @@ function getMatchingReactNativeSemVerForReactNativeMacOSVersion(
   return 'unknown';
 }
 
-function getLatestMatchingVersion(
+async function getLatestMatchingVersion(
   pkg: string,
   versionSemVer: string,
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (semver.validRange(versionSemVer)) {
-      // Ideally we'd be able to just use npm.packages.range(pkg, versionSemVer) here,
-      // but alas it fails to give us the right result for react-native-macos@^0.60.0-microsoft.57
-      // as it fails to return pre-release versions
-      npm.packages.releases(
-        pkg,
-        (err: any, details: {[key: string]: object}) => {
-          if (err) {
-            reject(err);
-          } else if (details) {
-            const versions = Object.keys(details);
-            if (versions.length > 0) {
-              const candidates = versions
-                .filter(v => semver.satisfies(v, versionSemVer))
-                .sort(semver.rcompare);
-              if (candidates && candidates.length > 0) {
-                resolve(candidates[0]);
-                return;
-              }
-            }
-          }
-          reject(
-            new Error(`No matching version of ${pkg}@${versionSemVer} found!`),
-          );
-        },
-      );
-    } else {
-      // Assume that versionSemVer is actually a tag
-      npm.packages.release(
-        pkg,
-        versionSemVer,
-        (err: any, details: {version: string}[]) => {
-          if (err) {
-            reject(err);
-          } else if (details && details.length > 0) {
-            resolve(details[0].version);
-            return;
-          }
-          reject(
-            new Error(`No matching version of ${pkg}@${versionSemVer} found!`),
-          );
-        },
-      );
+  const npmResponse = await npmFetch.json(pkg, {registry: NPM_REGISTRY_URL});
+
+  // Check if versionSemVer is a tag (i.e. 'canary', 'latest', 'preview', etc.)
+  if ('dist-tags' in npmResponse) {
+    const distTags = npmResponse['dist-tags'] as Record<string, string>;
+    if (versionSemVer in distTags) {
+      return distTags[versionSemVer];
     }
-  });
+  }
+
+  // Check if versionSemVer is a semver version (i.e. '^0.60.0-0', '0.63.1', etc.)
+  if ('versions' in npmResponse) {
+    const versions = Object.keys(
+      npmResponse.versions as Record<string, unknown>,
+    );
+    if (versions.length > 0) {
+      const candidates = versions
+        .filter(v => semver.satisfies(v, versionSemVer))
+        .sort(semver.rcompare);
+      if (candidates.length > 0) {
+        return candidates[0];
+      }
+    }
+  }
+
+  throw new Error(`No matching version of ${pkg}@${versionSemVer} found`);
 }
 
 async function getLatestMatchingReactNativeMacOSVersion(
   versionSemVer: string,
 ): Promise<string> {
   try {
-    const version = await getLatestMatchingVersion(
-      MACOSPKG,
-      versionSemVer,
-    );
+    const version = await getLatestMatchingVersion(MACOSPKG, versionSemVer);
     return version;
   } catch (err) {
-    printError(
-      `No version of ${printPkg(MACOSPKG, versionSemVer)} found!`,
-    );
+    printError(`No version of ${printPkg(MACOSPKG, versionSemVer)} found!`);
     process.exit(EXITCODE_NO_MATCHING_RNMACOS);
-    return "";
+    return '';
   }
 }
 
@@ -233,7 +200,9 @@ function isProjectUsingYarn(cwd: string) {
  * Outputs decorated version of the package for the CLI
  */
 function printPkg(name: string, version?: string) {
-  return `${chalk.yellow(name)}${version ? `${chalk.grey('@')}${chalk.cyan(version)}` : ''}`;
+  return `${chalk.yellow(name)}${
+    version ? `${chalk.grey('@')}${chalk.cyan(version)}` : ''
+  }`;
 }
 
 /**
@@ -245,53 +214,64 @@ function printError(message: string, ...optionalParams: any[]) {
 
 (async () => {
   try {
-    const { overwrite, verbose } = argv;
+    const {overwrite, verbose} = argv;
     let version = argv.version;
 
     const name = getReactNativeAppName();
     const reactNativeVersion = getReactNativeVersion();
     const reactNativeMacOSVersion = getReactNativeMacOSVersion();
-    const reactNativeMacOSLatestVersion = await getLatestMatchingReactNativeMacOSVersion('latest');
+    const reactNativeMacOSLatestVersion =
+      await getLatestMatchingReactNativeMacOSVersion('latest');
 
     if (!version) {
       version = getDefaultReactNativeMacOSSemVerForReactNativeVersion(
         reactNativeVersion,
-        reactNativeMacOSLatestVersion
+        reactNativeMacOSLatestVersion,
       );
     }
 
-    const reactNativeMacOSResolvedVersion = await getLatestMatchingReactNativeMacOSVersion(version);
+    const reactNativeMacOSResolvedVersion =
+      await getLatestMatchingReactNativeMacOSVersion(version);
 
     if (!argv.version) {
       console.log(
         `Latest matching version of ${chalk.green(MACOSPKG)} for ${printPkg(
-          RNPKG, 
-          reactNativeVersion
-        )} is ${printPkg(
-          MACOSPKG, 
-          reactNativeMacOSResolvedVersion
-        )}.`,
+          RNPKG,
+          reactNativeVersion,
+        )} is ${printPkg(MACOSPKG, reactNativeMacOSResolvedVersion)}.`,
       );
 
       if (semver.prerelease(reactNativeMacOSResolvedVersion)) {
         console.warn(
           `
-${printPkg(MACOSPKG, reactNativeMacOSResolvedVersion)} is a ${chalk.bgYellow('pre-release')} version.
-The latest supported version is ${printPkg(MACOSPKG, reactNativeMacOSLatestVersion)}.
+${printPkg(MACOSPKG, reactNativeMacOSResolvedVersion)} is a ${chalk.bgYellow(
+            'pre-release',
+          )} version.
+The latest supported version is ${printPkg(
+            MACOSPKG,
+            reactNativeMacOSLatestVersion,
+          )}.
 You can either downgrade your version of ${chalk.yellow(RNPKG)} to ${chalk.cyan(
             getMatchingReactNativeSemVerForReactNativeMacOSVersion(
               reactNativeMacOSLatestVersion,
             ),
-)}, or continue with a ${chalk.bgYellow('pre-release')} version of ${chalk.yellow(MACOSPKG)}.
+          )}, or continue with a ${chalk.bgYellow(
+            'pre-release',
+          )} version of ${chalk.yellow(MACOSPKG)}.
 `,
         );
 
         if (!argv.prerelease) {
-          const confirm = (await prompts({
-            type: 'confirm',
-            name: 'confirm',
-            message: `Do you wish to continue with ${printPkg(MACOSPKG, reactNativeMacOSResolvedVersion)}?`,
-          })).confirm;
+          const confirm = (
+            await prompts({
+              type: 'confirm',
+              name: 'confirm',
+              message: `Do you wish to continue with ${printPkg(
+                MACOSPKG,
+                reactNativeMacOSResolvedVersion,
+              )}?`,
+            })
+          ).confirm;
 
           if (!confirm) {
             process.exit(EXITCODE_USER_CANCEL);
@@ -303,17 +283,23 @@ You can either downgrade your version of ${chalk.yellow(RNPKG)} to ${chalk.cyan(
     const pkgLatest = printPkg(MACOSPKG, version);
 
     if (reactNativeMacOSResolvedVersion !== reactNativeMacOSVersion) {
-      console.log(`${reactNativeMacOSVersion ? 'Upgrading to' : 'Installing'} ${pkgLatest}…`);
+      console.log(
+        `${
+          reactNativeMacOSVersion ? 'Upgrading to' : 'Installing'
+        } ${pkgLatest}…`,
+      );
 
       const pkgmgr = isProjectUsingYarn(process.cwd())
         ? `yarn add${verbose ? '' : ' -s'}`
         : `npm install --save${verbose ? '' : ' --silent'}`;
-      const execOptions = verbose ? { stdio: 'inherit' as 'inherit' } : {};
+      const execOptions = verbose ? {stdio: 'inherit' as 'inherit'} : {};
       execSync(`${pkgmgr} "${MACOSPKG}@${version}"`, execOptions);
 
       console.log(`${pkgLatest} ${chalk.green('successfully installed!')}`);
     } else {
-      console.log(`${chalk.green('Latest version')} of ${pkgLatest} already installed.`);
+      console.log(
+        `${chalk.green('Latest version')} of ${pkgLatest} already installed.`,
+      );
     }
 
     const generateMacOS = require(reactNativeMacOSGeneratePath());

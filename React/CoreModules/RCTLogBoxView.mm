@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,10 +9,11 @@
 
 #import <React/RCTLog.h>
 #import <React/RCTSurface.h>
+#import <React/RCTSurfaceHostingView.h>
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
 
-@implementation RCTLogBoxWindow { // TODO(macOS GH#774) Renamed from _view to _window
+@implementation RCTLogBoxView {
   RCTSurface *_surface;
 }
 
@@ -34,24 +35,52 @@
   self.rootViewController = _rootViewController;
 }
 
-- (instancetype)initWithFrame:(CGRect)frame bridge:(RCTBridge *)bridge
+- (instancetype)initWithWindow:(UIWindow *)window bridge:(RCTBridge *)bridge
 {
-  if ((self = [super initWithFrame:frame])) {
-    self.windowLevel = UIWindowLevelStatusBar - 1;
-    self.backgroundColor = [UIColor clearColor];
+  RCTErrorNewArchitectureValidation(RCTNotAllowedInFabricWithoutLegacy, @"RCTLogBoxView", nil);
 
-    _surface = [[RCTSurface alloc] initWithBridge:bridge moduleName:@"LogBox" initialProperties:@{}];
-
-    [_surface start];
-    [_surface setSize:frame.size];
-
-    if (![_surface synchronouslyWaitForStage:RCTSurfaceStageSurfaceDidInitialMounting timeout:1]) {
-      RCTLogInfo(@"Failed to mount LogBox within 1s");
-    }
-
-    [self createRootViewController:(UIView *)_surface.view];
+  if (@available(iOS 13.0, *)) {
+    self = [super initWithWindowScene:window.windowScene];
+  } else {
+    self = [super initWithFrame:window.frame];
   }
+
+  self.windowLevel = UIWindowLevelStatusBar - 1;
+  self.backgroundColor = [UIColor clearColor];
+
+  _surface = [[RCTSurface alloc] initWithBridge:bridge moduleName:@"LogBox" initialProperties:@{}];
+  [_surface start];
+
+  if (![_surface synchronouslyWaitForStage:RCTSurfaceStageSurfaceDidInitialMounting timeout:1]) {
+    RCTLogInfo(@"Failed to mount LogBox within 1s");
+  }
+  [self createRootViewController:(UIView *)_surface.view];
+
   return self;
+}
+
+- (instancetype)initWithWindow:(UIWindow *)window surfacePresenter:(id<RCTSurfacePresenterStub>)surfacePresenter
+{
+  if (@available(iOS 13.0, *)) {
+    self = [super initWithWindowScene:window.windowScene];
+  } else {
+    self = [super initWithFrame:window.frame];
+  }
+
+  id<RCTSurfaceProtocol> surface = [surfacePresenter createFabricSurfaceForModuleName:@"LogBox" initialProperties:@{}];
+  [surface start];
+  RCTSurfaceHostingView *rootView = [[RCTSurfaceHostingView alloc]
+      initWithSurface:surface
+      sizeMeasureMode:RCTSurfaceSizeMeasureModeWidthExact | RCTSurfaceSizeMeasureModeHeightExact];
+  [self createRootViewController:rootView];
+
+  return self;
+}
+
+- (void)layoutSubviews
+{
+  [super layoutSubviews];
+  [_surface setSize:self.frame.size];
 }
 
 - (void)dealloc
@@ -67,10 +96,30 @@
 
 @end
 
-#else // [TODO(macOS GH#774)
+#else // [macOS
 
-@implementation RCTLogBoxWindow { // TODO(macOS GH#774) Renamed from _view to _window
+@implementation RCTLogBoxView {
   RCTSurface *_surface;
+}
+
+- (instancetype)initWithSurfacePresenter:(id<RCTSurfacePresenterStub>)surfacePresenter
+{
+  NSRect bounds = NSMakeRect(0, 0, 600, 800);
+  if ((self = [self initWithContentRect:bounds
+                                styleMask:NSWindowStyleMaskTitled
+                                  backing:NSBackingStoreBuffered
+                                    defer:YES])) {
+    id<RCTSurfaceProtocol> surface = [surfacePresenter createFabricSurfaceForModuleName:@"LogBox"
+                                                                        initialProperties:@{}];
+    [surface start];
+    RCTSurfaceHostingView *rootView = [[RCTSurfaceHostingView alloc]
+        initWithSurface:surface
+        sizeMeasureMode:RCTSurfaceSizeMeasureModeWidthExact | RCTSurfaceSizeMeasureModeHeightExact];    
+      
+    self.contentView = rootView;
+    self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  }
+  return self;
 }
 
 - (instancetype)initWithBridge:(RCTBridge *)bridge
@@ -95,13 +144,15 @@
   return self;
 }
 
-- (void)hide
+- (void)setHidden:(BOOL)hidden // [macOS
 {
-  if (NSApp.modalWindow == self) {
-    [NSApp stopModal];
+  if (hidden) {
+    if (NSApp.modalWindow == self) {
+      [NSApp stopModal];
+    }
+    [self orderOut:nil];
   }
-  [self orderOut:nil];
-}
+} // macOS]
 
 - (void)show
 {
@@ -129,4 +180,4 @@
 
 @end
 
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,13 +8,17 @@
  * @format
  */
 
-'use strict';
-
-import * as React from 'react';
-import {useMemo, useState, useRef, useImperativeHandle} from 'react';
-import useAndroidRippleForView, {
-  type RippleConfig,
-} from './useAndroidRippleForView';
+import type {
+  BlurEvent,
+  // [macOS
+  FocusEvent,
+  KeyEvent,
+  LayoutEvent,
+  MouseEvent,
+  PressEvent,
+  // macOS]
+} from '../../Types/CoreEventTypes';
+import type {DraggedTypesType} from '../View/DraggedType'; // [macOS]
 import type {
   AccessibilityActionEvent,
   AccessibilityActionInfo,
@@ -22,17 +26,16 @@ import type {
   AccessibilityState,
   AccessibilityValue,
 } from '../View/ViewAccessibility';
+
 import {PressabilityDebugView} from '../../Pressability/PressabilityDebug';
 import usePressability from '../../Pressability/usePressability';
-import {normalizeRect, type RectOrSize} from '../../StyleSheet/Rect';
-import type {ColorValue} from '../../StyleSheet/StyleSheet';
-import type {
-  LayoutEvent,
-  MouseEvent, // TODO(macOS GH#774)
-  PressEvent,
-} from '../../Types/CoreEventTypes';
-import type {DraggedTypesType} from '../View/DraggedType'; // TODO(macOS GH#774)
+import {type RectOrSize} from '../../StyleSheet/Rect';
 import View from '../View/View';
+import useAndroidRippleForView, {
+  type RippleConfig,
+} from './useAndroidRippleForView';
+import * as React from 'react';
+import {useImperativeHandle, useMemo, useRef, useState} from 'react';
 
 type ViewStyleProp = $ElementType<React.ElementConfig<typeof View>, 'style'>;
 
@@ -47,23 +50,62 @@ type Props = $ReadOnly<{|
   accessibilityActions?: ?$ReadOnlyArray<AccessibilityActionInfo>,
   accessibilityElementsHidden?: ?boolean,
   accessibilityHint?: ?Stringish,
+  accessibilityLanguage?: ?Stringish,
   accessibilityIgnoresInvertColors?: ?boolean,
   accessibilityLabel?: ?Stringish,
   accessibilityLiveRegion?: ?('none' | 'polite' | 'assertive'),
   accessibilityRole?: ?AccessibilityRole,
   accessibilityState?: ?AccessibilityState,
   accessibilityValue?: ?AccessibilityValue,
+  'aria-valuemax'?: AccessibilityValue['max'],
+  'aria-valuemin'?: AccessibilityValue['min'],
+  'aria-valuenow'?: AccessibilityValue['now'],
+  'aria-valuetext'?: AccessibilityValue['text'],
   accessibilityViewIsModal?: ?boolean,
+  'aria-modal'?: ?boolean,
   accessible?: ?boolean,
+
+  /**
+   * alias for accessibilityState
+   *
+   * see https://reactnative.dev/docs/accessibility#accessibilitystate
+   */
+  'aria-busy'?: ?boolean,
+  'aria-checked'?: ?boolean | 'mixed',
+  'aria-disabled'?: ?boolean,
+  'aria-expanded'?: ?boolean,
+  'aria-selected'?: ?boolean,
+  /**
+   * A value indicating whether the accessibility elements contained within
+   * this accessibility element are hidden.
+   */
+  'aria-hidden'?: ?boolean,
+  'aria-live'?: ?('polite' | 'assertive' | 'off'),
   focusable?: ?boolean,
   importantForAccessibility?: ?('auto' | 'yes' | 'no' | 'no-hide-descendants'),
   onAccessibilityAction?: ?(event: AccessibilityActionEvent) => mixed,
+
+  /**
+   * Whether a press gesture can be interrupted by a parent gesture such as a
+   * scroll event. Defaults to true.
+   */
+  cancelable?: ?boolean,
 
   /**
    * Either children or a render prop that receives a boolean reflecting whether
    * the component is currently pressed.
    */
   children: React.Node | ((state: StateCallbackType) => React.Node),
+
+  /**
+   * Duration to wait after hover in before calling `onHoverIn`.
+   */
+  delayHoverIn?: ?number,
+
+  /**
+   * Duration to wait after hover out before calling `onHoverOut`.
+   */
+  delayHoverOut?: ?number,
 
   /**
    * Duration (in milliseconds) from `onPressIn` before `onLongPress` is called.
@@ -89,27 +131,79 @@ type Props = $ReadOnly<{|
   /**
    * Called when this view's layout changes.
    */
-  onLayout?: ?(event: LayoutEvent) => void,
+  onLayout?: ?(event: LayoutEvent) => mixed,
+
+  /**
+   * Called when the hover is activated to provide visual feedback.
+   */
+  onHoverIn?: ?(event: MouseEvent) => mixed,
+
+  /**
+   * Called when the hover is deactivated to undo visual feedback.
+   */
+  onHoverOut?: ?(event: MouseEvent) => mixed,
 
   /**
    * Called when a long-tap gesture is detected.
    */
-  onLongPress?: ?(event: PressEvent) => void,
+  onLongPress?: ?(event: PressEvent) => mixed,
 
   /**
    * Called when a single tap gesture is detected.
    */
-  onPress?: ?(event: PressEvent) => void,
+  onPress?: ?(event: PressEvent) => mixed,
 
   /**
    * Called when a touch is engaged before `onPress`.
    */
-  onPressIn?: ?(event: PressEvent) => void,
+  onPressIn?: ?(event: PressEvent) => mixed,
 
   /**
    * Called when a touch is released before `onPress`.
    */
-  onPressOut?: ?(event: PressEvent) => void,
+  onPressOut?: ?(event: PressEvent) => mixed,
+
+  // [macOS
+  /**
+   * Called after the element is focused.
+   */
+  onFocus?: ?(event: FocusEvent) => void,
+
+  /**
+   * Called after the element loses focus.
+   */
+  onBlur?: ?(event: BlurEvent) => void,
+
+  /**
+   * Called after a key down event is detected.
+   */
+  onKeyDown?: ?(event: KeyEvent) => void,
+
+  /**
+   * Called after a key up event is detected.
+   */
+  onKeyUp?: ?(event: KeyEvent) => void,
+
+  /**
+   * Array of keys to receive key down events for
+   * For arrow keys, add "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+   */
+  validKeysDown?: ?Array<string>,
+
+  /**
+   * Array of keys to receive key up events for
+   * For arrow keys, add "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+   */
+  validKeysUp?: ?Array<string>,
+
+  acceptsFirstMouse?: ?boolean,
+  enableFocusRing?: ?boolean,
+  tooltip?: ?string,
+  onDragEnter?: (event: MouseEvent) => void,
+  onDragLeave?: (event: MouseEvent) => void,
+  onDrop?: (event: MouseEvent) => void,
+  draggedTypes?: ?DraggedTypesType,
+  // macOS]
 
   /**
    * Either view styles or a function that receives a boolean reflecting whether
@@ -141,39 +235,54 @@ type Props = $ReadOnly<{|
    * Duration to wait after press down before calling `onPressIn`.
    */
   unstable_pressDelay?: ?number,
-
-  // [TODO(macOS GH#774)
-  acceptsFirstMouse?: ?boolean,
-  enableFocusRing?: ?boolean,
-  tooltip?: ?string,
-  onMouseEnter?: (event: MouseEvent) => void,
-  onMouseLeave?: (event: MouseEvent) => void,
-  onDragEnter?: (event: MouseEvent) => void,
-  onDragLeave?: (event: MouseEvent) => void,
-  onDrop?: (event: MouseEvent) => void,
-  draggedTypes?: ?DraggedTypesType,
-  // ]TODO(macOS GH#774)
+  /**
+   * Web to Native Accessibilty props
+   * https://github.com/facebook/react-native/issues/34424
+   */
+  'aria-label'?: ?string,
 |}>;
 
 /**
  * Component used to build display components that should respond to whether the
  * component is currently pressed or not.
  */
+/* $FlowFixMe[missing-local-annot] The type annotation(s) required by Flow's
+ * LTI update could not be added via codemod */
 function Pressable(props: Props, forwardedRef): React.Node {
   const {
-    acceptsFirstMouse, // [TODO(macOS GH#774)
-    enableFocusRing, // ]TODO(macOS GH#774)
+    acceptsFirstMouse, // [macOS]
+    enableFocusRing, // [macOS]
     accessible,
+    accessibilityState,
+    'aria-live': ariaLive,
     android_disableSound,
     android_ripple,
+    'aria-busy': ariaBusy,
+    'aria-checked': ariaChecked,
+    'aria-disabled': ariaDisabled,
+    'aria-expanded': ariaExpanded,
+    'aria-label': ariaLabel,
+    'aria-selected': ariaSelected,
+    cancelable,
     children,
+    delayHoverIn,
+    delayHoverOut,
     delayLongPress,
     disabled,
     focusable,
+    hitSlop,
+    onHoverIn,
+    onHoverOut,
     onLongPress,
     onPress,
     onPressIn,
     onPressOut,
+    // [macOS
+    onFocus,
+    onBlur,
+    onKeyDown,
+    onKeyUp,
+    // macOS]
     pressRetentionOffset,
     style,
     testOnly_pressed,
@@ -188,26 +297,57 @@ function Pressable(props: Props, forwardedRef): React.Node {
 
   const [pressed, setPressed] = usePressState(testOnly_pressed === true);
 
-  const hitSlop = normalizeRect(props.hitSlop);
+  let _accessibilityState = {
+    busy: ariaBusy ?? accessibilityState?.busy,
+    checked: ariaChecked ?? accessibilityState?.checked,
+    disabled: ariaDisabled ?? accessibilityState?.disabled,
+    expanded: ariaExpanded ?? accessibilityState?.expanded,
+    selected: ariaSelected ?? accessibilityState?.selected,
+  };
 
+  _accessibilityState =
+    disabled != null ? {..._accessibilityState, disabled} : _accessibilityState;
+
+  const accessibilityValue = {
+    max: props['aria-valuemax'] ?? props.accessibilityValue?.max,
+    min: props['aria-valuemin'] ?? props.accessibilityValue?.min,
+    now: props['aria-valuenow'] ?? props.accessibilityValue?.now,
+    text: props['aria-valuetext'] ?? props.accessibilityValue?.text,
+  };
+
+  const accessibilityLiveRegion =
+    ariaLive === 'off' ? 'none' : ariaLive ?? props.accessibilityLiveRegion;
+
+  const accessibilityLabel = ariaLabel ?? props.accessibilityLabel;
   const restPropsWithDefaults: React.ElementConfig<typeof View> = {
     ...restProps,
     ...android_rippleConfig?.viewProps,
-    acceptsFirstMouse: acceptsFirstMouse !== false && !disabled, // [TODO(macOS GH#774)
-    enableFocusRing: enableFocusRing !== false && !disabled, // ]TODO(macOS GH#774)
+    acceptsFirstMouse: acceptsFirstMouse !== false && !disabled, // [macOS
+    enableFocusRing: enableFocusRing !== false && !disabled,
     accessible: accessible !== false,
-    focusable: focusable !== false,
+    accessibilityViewIsModal:
+      restProps['aria-modal'] ?? restProps.accessibilityViewIsModal,
+    accessibilityLiveRegion,
+    accessibilityLabel,
+    accessibilityState: _accessibilityState,
+    focusable: focusable !== false && !disabled, // macOS]
+    accessibilityValue,
     hitSlop,
   };
 
   const config = useMemo(
     () => ({
+      cancelable,
       disabled,
       hitSlop,
       pressRectOffset: pressRetentionOffset,
       android_disableSound,
+      delayHoverIn,
+      delayHoverOut,
       delayLongPress,
       delayPressIn: unstable_pressDelay,
+      onHoverIn,
+      onHoverOut,
       onLongPress,
       onPress,
       onPressIn(event: PressEvent): void {
@@ -229,17 +369,34 @@ function Pressable(props: Props, forwardedRef): React.Node {
           onPressOut(event);
         }
       },
+      // [macOS
+      onFocus,
+      onBlur,
+      onKeyDown,
+      onKeyUp,
+      // macOS]
     }),
     [
       android_disableSound,
       android_rippleConfig,
+      cancelable,
+      delayHoverIn,
+      delayHoverOut,
       delayLongPress,
       disabled,
       hitSlop,
+      onHoverIn,
+      onHoverOut,
       onLongPress,
       onPress,
       onPressIn,
       onPressOut,
+      // [macOS
+      onFocus,
+      onBlur,
+      onKeyDown,
+      onKeyUp,
+      // macOS]
       pressRetentionOffset,
       setPressed,
       unstable_pressDelay,

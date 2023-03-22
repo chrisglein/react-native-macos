@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Mete Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,17 +7,18 @@
  * @format
  * @flow strict-local
  */
-// [TODO(macOS GH#774)
-'use strict';
 
-import type {ColorValue} from './StyleSheet';
+// [macOS]
 import type {ProcessedColorValue} from './processColor';
+import type {ColorValue} from './StyleSheet';
 
 export opaque type NativeColorValue = {
   semantic?: Array<string>,
   dynamic?: {
     light: ?(ColorValue | ProcessedColorValue),
     dark: ?(ColorValue | ProcessedColorValue),
+    highContrastLight?: ?(ColorValue | ProcessedColorValue),
+    highContrastDark?: ?(ColorValue | ProcessedColorValue),
   },
   colorWithSystemEffect?: {
     baseColor: ?(ColorValue | ProcessedColorValue),
@@ -51,12 +52,21 @@ export const ColorWithSystemEffectMacOSPrivate = (
 export type DynamicColorMacOSTuplePrivate = {
   light: ColorValue,
   dark: ColorValue,
+  highContrastLight?: ColorValue,
+  highContrastDark?: ColorValue,
 };
 
 export const DynamicColorMacOSPrivate = (
   tuple: DynamicColorMacOSTuplePrivate,
 ): ColorValue => {
-  return {dynamic: {light: tuple.light, dark: tuple.dark}};
+  return {
+    dynamic: {
+      light: tuple.light,
+      dark: tuple.dark,
+      highContrastLight: tuple.highContrastLight,
+      highContrastDark: tuple.highContrastDark,
+    },
+  };
 };
 
 export const normalizeColorObject = (
@@ -72,8 +82,14 @@ export const normalizeColorObject = (
     const dynamic = color.dynamic;
     const dynamicColor: NativeColorValue = {
       dynamic: {
+        // $FlowFixMe[incompatible-use]
         light: normalizeColor(dynamic.light),
+        // $FlowFixMe[incompatible-use]
         dark: normalizeColor(dynamic.dark),
+        // $FlowFixMe[incompatible-use]
+        highContrastLight: normalizeColor(dynamic.highContrastLight),
+        // $FlowFixMe[incompatible-use]
+        highContrastDark: normalizeColor(dynamic.highContrastDark),
       },
     };
     return dynamicColor;
@@ -85,12 +101,15 @@ export const normalizeColorObject = (
     const colorWithSystemEffect = color.colorWithSystemEffect;
     const colorObject: NativeColorValue = {
       colorWithSystemEffect: {
+        // $FlowFixMe[incompatible-use]
         baseColor: processColor(colorWithSystemEffect.baseColor),
+        // $FlowFixMe[incompatible-use]
         systemEffect: colorWithSystemEffect.systemEffect,
       },
     };
     return colorObject;
   }
+
   return null;
 };
 
@@ -102,8 +121,14 @@ export const processColorObject = (
     const dynamic = color.dynamic;
     const dynamicColor: NativeColorValue = {
       dynamic: {
+        // $FlowFixMe[incompatible-use]
         light: processColor(dynamic.light),
+        // $FlowFixMe[incompatible-use]
         dark: processColor(dynamic.dark),
+        // $FlowFixMe[incompatible-use]
+        highContrastLight: processColor(dynamic.highContrastLight),
+        // $FlowFixMe[incompatible-use]
+        highContrastDark: processColor(dynamic.highContrastDark),
       },
     };
     return dynamicColor;
@@ -115,7 +140,9 @@ export const processColorObject = (
     const colorWithSystemEffect = color.colorWithSystemEffect;
     const colorObject: NativeColorValue = {
       colorWithSystemEffect: {
+        // $FlowFixMe[incompatible-use]
         baseColor: processColor(colorWithSystemEffect.baseColor),
+        // $FlowFixMe[incompatible-use]
         systemEffect: colorWithSystemEffect.systemEffect,
       },
     };
@@ -123,4 +150,3 @@ export const processColorObject = (
   }
   return color;
 };
-// ]TODO(macOS GH#774)

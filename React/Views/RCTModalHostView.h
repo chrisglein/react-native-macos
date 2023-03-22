@@ -1,10 +1,11 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
+#if !TARGET_OS_OSX // [macOS]
 #import <UIKit/UIKit.h>
 
 #import <React/RCTInvalidating.h>
@@ -16,13 +17,19 @@
 
 @protocol RCTModalHostViewInteractor;
 
-@interface RCTModalHostView : UIView <RCTInvalidating>
+@interface RCTModalHostView : RCTUIView <RCTInvalidating, UIAdaptivePresentationControllerDelegate> // [macOS]
 
 @property (nonatomic, copy) NSString *animationType;
 @property (nonatomic, assign) UIModalPresentationStyle presentationStyle;
 @property (nonatomic, assign, getter=isTransparent) BOOL transparent;
 
 @property (nonatomic, copy) RCTDirectEventBlock onShow;
+@property (nonatomic, assign) BOOL visible;
+
+// Android only
+@property (nonatomic, assign) BOOL statusBarTranslucent;
+@property (nonatomic, assign) BOOL hardwareAccelerated;
+@property (nonatomic, assign) BOOL animated;
 
 @property (nonatomic, copy) NSNumber *identifier;
 
@@ -30,6 +37,9 @@
 
 @property (nonatomic, copy) NSArray<NSString *> *supportedOrientations;
 @property (nonatomic, copy) RCTDirectEventBlock onOrientationChange;
+
+// Fabric only
+@property (nonatomic, copy) RCTDirectEventBlock onDismiss;
 
 - (instancetype)initWithBridge:(RCTBridge *)bridge NS_DESIGNATED_INITIALIZER;
 
@@ -45,3 +55,4 @@
                     animated:(BOOL)animated;
 
 @end
+#endif // [macOS]

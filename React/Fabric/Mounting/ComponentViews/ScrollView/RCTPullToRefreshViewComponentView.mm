@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -16,7 +16,7 @@
 #import <React/RCTRefreshableProtocol.h>
 #import <React/RCTScrollViewComponentView.h>
 
-#import "FBRCTFabricComponentsPlugins.h"
+#import "RCTFabricComponentsPlugins.h"
 
 using namespace facebook::react;
 
@@ -24,8 +24,10 @@ using namespace facebook::react;
 @end
 
 @implementation RCTPullToRefreshViewComponentView {
+#if !TARGET_OS_OSX // [macOS]
   UIRefreshControl *_refreshControl;
-  RCTScrollViewComponentView *_scrollViewComponentView;
+#endif // [macOS]
+  RCTScrollViewComponentView *__weak _scrollViewComponentView;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -39,10 +41,12 @@ using namespace facebook::react;
     static auto const defaultProps = std::make_shared<PullToRefreshViewProps const>();
     _props = defaultProps;
 
-    _refreshControl = [[UIRefreshControl alloc] init];
+#if !TARGET_OS_OSX // [macOS]
+    _refreshControl = [UIRefreshControl new];
     [_refreshControl addTarget:self
                         action:@selector(handleUIControlEventValueChanged)
               forControlEvents:UIControlEventValueChanged];
+#endif // [macOS]
   }
 
   return self;
@@ -61,11 +65,13 @@ using namespace facebook::react;
   auto const &newConcreteProps = *std::static_pointer_cast<PullToRefreshViewProps const>(props);
 
   if (newConcreteProps.refreshing != oldConcreteProps.refreshing) {
+#if !TARGET_OS_OSX // [macOS]
     if (newConcreteProps.refreshing) {
       [_refreshControl beginRefreshing];
     } else {
       [_refreshControl endRefreshing];
     }
+#endif // [macOS]
   }
 
   BOOL needsUpdateTitle = NO;
@@ -97,7 +103,9 @@ using namespace facebook::react;
   auto const &concreteProps = *std::static_pointer_cast<PullToRefreshViewProps const>(_props);
 
   if (concreteProps.title.empty()) {
+#if !TARGET_OS_OSX // [macOS]
     _refreshControl.attributedTitle = nil;
+#endif // [macOS]
     return;
   }
 
@@ -106,8 +114,10 @@ using namespace facebook::react;
     attributes[NSForegroundColorAttributeName] = RCTUIColorFromSharedColor(concreteProps.titleColor);
   }
 
+#if !TARGET_OS_OSX // [macOS]
   _refreshControl.attributedTitle =
       [[NSAttributedString alloc] initWithString:RCTNSStringFromString(concreteProps.title) attributes:attributes];
+#endif // [macOS]
 }
 
 #pragma mark - Attaching & Detaching
@@ -132,9 +142,11 @@ using namespace facebook::react;
     return;
   }
 
+#if !TARGET_OS_OSX // [macOS]
   if (@available(macOS 13.0, *)) {
     _scrollViewComponentView.scrollView.refreshControl = _refreshControl;
   }
+#endif // [macOS]
 }
 
 - (void)_detach
@@ -144,11 +156,13 @@ using namespace facebook::react;
   }
 
   // iOS requires to end refreshing before unmounting.
+#if !TARGET_OS_OSX // [macOS]
   [_refreshControl endRefreshing];
 
   if (@available(macOS 13.0, *)) {
     _scrollViewComponentView.scrollView.refreshControl = nil;
   }
+#endif // [macOS]
   _scrollViewComponentView = nil;
 }
 
@@ -161,11 +175,13 @@ using namespace facebook::react;
 
 - (void)setNativeRefreshing:(BOOL)refreshing
 {
+#if !TARGET_OS_OSX // [macOS]
   if (refreshing) {
     [_refreshControl beginRefreshing];
   } else {
     [_refreshControl endRefreshing];
   }
+#endif // [macOS]
 }
 
 #pragma mark - RCTRefreshableProtocol

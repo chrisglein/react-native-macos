@@ -2,78 +2,200 @@
 name: $(Date:yyyyMMdd).$(Rev:.r)
 
 variables:
-  - template: variables/mac.yml
+  - template: variables/vars.yml
 
 trigger: none # will disable CI builds entirely
 
 pr:
   branches:
     include:
-      - master
+      - main
       - '*-stable'
   paths:
     exclude:
       - '*.md'
 
 jobs:
-  - job: JavaScriptRNPR
-    displayName: JavaScript React Native PR
-    strategy:
-      matrix:
-        office:
-          apply_office_patches: 'true'
-        public:
-          apply_office_patches: 'false'
+  - job: JavaScriptPR
+    displayName: Javascript PR
     pool:
-      vmImage: $(VmImage)
+      vmImage: $(VmImageApple)
       demands: ['xcode', 'sh', 'npm']
     steps:
       - template: templates/apple-job-javascript.yml
         parameters:
-            apply_office_patches: $(apply_office_patches)
             slice_name: $(slice_name)
             xcode_version: $(xcode_version)
 
-  - job: AppleRNPR
-    displayName: Apple React Native PR
+  - job: ApplePR
+    displayName: PR
     strategy:
       matrix:
-        ios:
+        'iOS Paper Debug JSC':
           packager_platform: 'ios'
           xcode_sdk: iphonesimulator
           xcode_scheme: 'RNTester'
-          xcode_destination: 'platform=iOS Simulator,OS=latest,name=iPhone 8'
-          xcode_actions_debug: 'build test'
-          xcode_actions_release: 'build'
-          apply_office_patches: 'false'
-        macos:
-          packager_platform: 'macos'
-          xcode_sdk: macosx
-          xcode_scheme: 'RNTester-macOS'
-          xcode_destination: 'platform=macOS,arch=x86_64'
-          xcode_actions_debug: 'build test'
-          xcode_actions_release: 'build'
-          apply_office_patches: 'false'
-        ios-office:
+          xcode_configuration: 'Debug'
+          xcode_destination: 'platform=iOS Simulator,OS=latest,name=iPhone 14'
+          xcode_actions: 'build test'
+          xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/debug_overrides.xcconfig' 
+          use_fabric: '0'
+          use_hermes: '0'
+        'iOS Paper Release JSC':
           packager_platform: 'ios'
           xcode_sdk: iphonesimulator
           xcode_scheme: 'RNTester'
-          xcode_destination: 'platform=iOS Simulator,OS=latest,name=iPhone 8'
-          xcode_actions_debug: 'build test'
-          xcode_actions_release: 'build'
-          apply_office_patches: 'true'
-        macos-office:
+          xcode_configuration: 'Release'
+          xcode_destination: 'platform=iOS Simulator,OS=latest,name=iPhone 14'
+          xcode_actions: 'build'
+          xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/release_overrides.xcconfig' 
+          use_fabric: '0'
+          use_hermes: '0'
+        'macOS Paper Debug JSC':
           packager_platform: 'macos'
           xcode_sdk: macosx
           xcode_scheme: 'RNTester-macOS'
+          xcode_configuration: 'Debug'
           xcode_destination: 'platform=macOS,arch=x86_64'
-          xcode_actions_debug: 'build test'
-          xcode_actions_release: 'build'
-          apply_office_patches: 'true'
+          xcode_actions: 'build test'
+          xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/debug_overrides.xcconfig' 
+          use_fabric: '0'
+          use_hermes: '0'
+        'macOS Paper Release JSC':
+          packager_platform: 'macos'
+          xcode_sdk: macosx
+          xcode_scheme: 'RNTester-macOS'
+          xcode_configuration: 'Release'
+          xcode_destination: 'platform=macOS,arch=x86_64'
+          xcode_actions: 'build'
+          xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/release_overrides.xcconfig' 
+          use_fabric: '0'
+          use_hermes: '0'
+        'iOS Fabric Debug JSC':
+          packager_platform: 'ios'
+          xcode_sdk: iphonesimulator
+          xcode_scheme: 'RNTester'
+          xcode_configuration: 'Debug'
+          xcode_destination: 'platform=iOS Simulator,OS=latest,name=iPhone 14'
+          xcode_actions: 'build test'
+          xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/debug_overrides.xcconfig' 
+          use_fabric: '1'
+          use_hermes: '0'
+        'iOS Fabric Release JSC':
+          packager_platform: 'ios'
+          xcode_sdk: iphonesimulator
+          xcode_scheme: 'RNTester'
+          xcode_configuration: 'Release'
+          xcode_destination: 'platform=iOS Simulator,OS=latest,name=iPhone 14'
+          xcode_actions: 'build'
+          xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/release_overrides.xcconfig' 
+          use_fabric: '1' 
+          use_hermes: '0'
+        'macOS Fabric Debug JSC':
+          packager_platform: 'macos'
+          xcode_sdk: macosx
+          xcode_scheme: 'RNTester-macOS'
+          xcode_configuration: 'Debug'
+          xcode_destination: 'platform=macOS,arch=x86_64'
+          xcode_actions: 'build test'
+          xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/debug_overrides.xcconfig' 
+          use_fabric: '1'
+          use_hermes: '0'
+        'macOS Fabric Release JSC':
+          packager_platform: 'macos'
+          xcode_sdk: macosx
+          xcode_scheme: 'RNTester-macOS'
+          xcode_configuration: 'Release'
+          xcode_destination: 'platform=macOS,arch=x86_64'
+          xcode_actions: 'build'
+          xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/release_overrides.xcconfig' 
+          use_fabric: '1'
+          use_hermes: '0'
+        # Disable Hermes Jobs for now
+        # 'iOS Paper Debug Hermes':
+        #   packager_platform: 'ios'
+        #   xcode_sdk: iphonesimulator
+        #   xcode_scheme: 'RNTester'
+        #   xcode_configuration: 'Debug'
+        #   xcode_destination: 'platform=iOS Simulator,OS=latest,name=iPhone 14'
+        #   xcode_actions: 'build test'
+        #   xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/debug_overrides.xcconfig' 
+        #   use_fabric: '0'
+        #   use_hermes: '1'
+        # 'iOS Paper Release Hermes':
+        #   packager_platform: 'ios'
+        #   xcode_sdk: iphonesimulator
+        #   xcode_scheme: 'RNTester'
+        #   xcode_configuration: 'Release'
+        #   xcode_destination: 'platform=iOS Simulator,OS=latest,name=iPhone 14'
+        #   xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/release_overrides.xcconfig' 
+        #   xcode_actions: 'build'
+        #   use_fabric: '0'
+        #   use_hermes: '1'
+        # 'macOS Paper Debug Hermes':
+        #   packager_platform: 'macos'
+        #   xcode_sdk: macosx
+        #   xcode_scheme: 'RNTester-macOS'
+        #   xcode_configuration: 'Debug'
+        #   xcode_destination: 'platform=macOS,arch=x86_64'
+        #   xcode_actions: 'build test'
+        #   xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/debug_overrides.xcconfig' 
+        #   use_fabric: '0'
+        #   use_hermes: '1'
+        # 'macOS Paper Release Hermes':
+        #   packager_platform: 'macos'
+        #   xcode_sdk: macosx
+        #   xcode_scheme: 'RNTester-macOS'
+        #   xcode_configuration: 'Release'
+        #   xcode_destination: 'platform=macOS,arch=x86_64'
+        #   xcode_actions: 'build'
+        #   xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/release_overrides.xcconfig' 
+        #   use_fabric: '0'
+        #   use_hermes: '1'
+        # 'iOS Fabric Debug Hermes': 
+        #   packager_platform: 'ios'
+        #   xcode_sdk: iphonesimulator
+        #   xcode_scheme: 'RNTester'
+        #   xcode_configuration: 'Debug'
+        #   xcode_destination: 'platform=iOS Simulator,OS=latest,name=iPhone 14'
+        #   xcode_actions: 'build test'
+        #   xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/debug_overrides.xcconfig' 
+        #   use_fabric: '1'
+        #   use_hermes: '1'
+        # 'iOS Fabric Release Hermes': 
+        #   packager_platform: 'ios'
+        #   xcode_sdk: iphonesimulator
+        #   xcode_scheme: 'RNTester'
+        #   xcode_configuration: 'Release'
+        #   xcode_destination: 'platform=iOS Simulator,OS=latest,name=iPhone 14'
+        #   xcode_actions: 'build'
+        #   xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/release_overrides.xcconfig' 
+        #   use_fabric: '1' 
+        #   use_hermes: '0'
+        # 'macOS Fabric Debug Hermes':
+        #   packager_platform: 'macos'
+        #   xcode_sdk: macosx
+        #   xcode_scheme: 'RNTester-macOS'
+        #   xcode_configuration: 'Debug'
+        #   xcode_destination: 'platform=macOS,arch=x86_64'
+        #   xcode_actions: 'build test'
+        #   xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/debug_overrides.xcconfig' 
+        #   use_fabric: '1'
+        #   use_hermes: '1'
+        # 'macOS Fabric Release Hermes':
+        #   packager_platform: 'macos'
+        #   xcode_sdk: macosx
+        #   xcode_scheme: 'RNTester-macOS'
+        #   xcode_configuration: 'Release'
+        #   xcode_destination: 'platform=macOS,arch=x86_64'
+        #   xcode_actions: 'build'
+        #   xcode_extraArgs: '-xcconfig $(Build.Repository.LocalPath)/.ado/xcconfig/release_overrides.xcconfig' 
+        #   use_fabric: '1'
+        #   use_hermes: '1'
     pool:
-      vmImage: $(VmImage)
+      vmImage: $(VmImageApple)
       demands: ['xcode', 'sh', 'npm']
-    timeoutInMinutes: 60 # how long to run the job before automatically cancelling
+    timeoutInMinutes: 90 # how long to run the job before automatically cancelling
     cancelTimeoutInMinutes: 5 # how much time to give 'run always even if cancelled tasks' before killing them
     steps:
       - template: templates/apple-job-react-native.yml
@@ -82,12 +204,11 @@ jobs:
           xcode_sdk: $(xcode_sdk)
           xcode_configuration: $(xcode_configuration)
           xcode_scheme: $(xcode_scheme)
-          xcode_actions_debug: $(xcode_actions_debug)
-          xcode_actions_release: $(xcode_actions_release)
+          xcode_actions: $(xcode_actions)
           xcode_destination: $(xcode_destination)
-          apply_office_patches: $(apply_office_patches)
           slice_name: $(slice_name)
           xcode_version: $(xcode_version)
+          xcode_extraArgs: $(xcode_extraArgs)
 
   - job: CliInit
     displayName: Verify react-native-macos-init
@@ -96,7 +217,7 @@ jobs:
         MacDebug:
           configuration: Debug
     pool:
-      vmImage: $(VmImage)
+      vmImage: $(VmImageApple)
       demands: ['xcode', 'sh', 'npm']
     steps:
       - template: templates/react-native-macos-init.yml

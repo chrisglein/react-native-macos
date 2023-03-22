@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -10,11 +10,11 @@
 #import <React/RCTRootView.h>
 #import <React/RCTViewManager.h>
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
 #import "AppDelegate.h"
-#else // [TODO(macOS GH#774)
+#else // [macOS
 #import "../../RNTester-macOS/AppDelegate.h"
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 
 @interface UpdatePropertiesExampleViewManager : RCTViewManager
 
@@ -24,21 +24,20 @@
 
 RCT_EXPORT_MODULE();
 
-- (RCTUIView *)view // TODO(macOS GH#774)
+- (RCTUIView *)view // [macOS]
 {
   return [UpdatePropertiesExampleView new];
 }
 
 @end
 
-@implementation UpdatePropertiesExampleView
-{
+@implementation UpdatePropertiesExampleView {
   RCTRootView *_rootView;
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   UIButton *_button;
-#else // [TODO(macOS GH#774)
+#else // [macOS
   NSButton *_button;
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
   BOOL _beige;
 }
 
@@ -52,23 +51,23 @@ RCT_EXPORT_MODULE();
 
     _rootView = [[RCTRootView alloc] initWithBridge:appDelegate.bridge
                                          moduleName:@"SetPropertiesExampleApp"
-                                  initialProperties:@{@"color":@"beige"}];
+                                  initialProperties:@{@"color" : @"beige"}];
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+    // [macOS Github#1642: Suppress analyzer error of nonlocalized string
+    NSString *buttonTitle = NSLocalizedString(@"Native Button", nil);
+#if !TARGET_OS_OSX
     _button = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    [_button setTitle:@"Native Button" forState:UIControlStateNormal];
+    [_button setTitle:buttonTitle /* [macOS] */ forState:UIControlStateNormal];
     [_button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     [_button setBackgroundColor:[UIColor grayColor]];
 
-    [_button addTarget:self
-                action:@selector(changeColor)
-      forControlEvents:UIControlEventTouchUpInside];
-#else // [TODO(macOS GH#774)
-    _button = [[NSButton alloc] init];
-    [_button setTitle:@"Native Button"];
+    [_button addTarget:self action:@selector(changeColor) forControlEvents:UIControlEventTouchUpInside];
+#else
+    _button = [NSButton new];
+    [_button setTitle:buttonTitle];
     [_button setTarget:self];
     [_button setAction:@selector(changeColor)];
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 
     [self addSubview:_button];
     [self addSubview:_rootView];
@@ -90,10 +89,10 @@ RCT_EXPORT_MODULE();
 - (void)changeColor
 {
   _beige = !_beige;
-  [_rootView setAppProperties:@{@"color":_beige ? @"beige" : @"purple"}];
+  [_rootView setAppProperties:@{@"color" : _beige ? @"beige" : @"purple"}];
 }
 
-- (NSArray<RCTUIView<RCTComponent> *> *)reactSubviews // TODO(macOS GH#774)
+- (NSArray<RCTUIView<RCTComponent> *> *)reactSubviews // [macOS]
 {
   // this is to avoid unregistering our RCTRootView when the component is removed from RN hierarchy
   (void)[super reactSubviews];

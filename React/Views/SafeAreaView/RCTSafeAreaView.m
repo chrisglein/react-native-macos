@@ -1,10 +1,11 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
+#if !TARGET_OS_OSX // [macOS]
 #import "RCTSafeAreaView.h"
 
 #import <React/RCTBridge.h>
@@ -21,7 +22,6 @@
 {
   if (self = [super initWithFrame:CGRectZero]) {
     _bridge = bridge;
-    _emulateUnlessSupported = YES; // The default.
   }
 
   return self;
@@ -30,6 +30,7 @@
 RCT_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder *)decoder)
 RCT_NOT_IMPLEMENTED(-(instancetype)initWithFrame : (CGRect)frame)
 
+#if DEBUG // [macOS] description is a debug-only feature
 - (NSString *)description
 {
   NSString *superDescription = [super description];
@@ -41,51 +42,10 @@ RCT_NOT_IMPLEMENTED(-(instancetype)initWithFrame : (CGRect)frame)
 
   return [NSString stringWithFormat:@"%@; safeAreaInsets = %@; appliedSafeAreaInsets = %@>",
                                     superDescription,
-                                    NSStringFromUIEdgeInsets([self safeAreaInsetsIfSupportedAndEnabled]),
+                                    NSStringFromUIEdgeInsets(self.safeAreaInsets),
                                     NSStringFromUIEdgeInsets(_currentSafeAreaInsets)];
 }
-
-- (BOOL)isSupportedByOS
-{
-  return [self respondsToSelector:@selector(safeAreaInsets)];
-}
-
-- (UIEdgeInsets)safeAreaInsetsIfSupportedAndEnabled
-{
-#if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000 /* __IPHONE_11_0 */
-  if (self.isSupportedByOS) {
-    if (@available(iOS 11.0, *)) {
-      return self.safeAreaInsets;
-    }
-  }
-#endif
-  return self.emulateUnlessSupported ? self.emulatedSafeAreaInsets : UIEdgeInsetsZero;
-}
-
-- (UIEdgeInsets)emulatedSafeAreaInsets
-{
-  UIViewController *vc = self.reactViewController;
-
-  if (!vc) {
-    return UIEdgeInsetsZero;
-  }
-
-  CGFloat topLayoutOffset = vc.topLayoutGuide.length;
-  CGFloat bottomLayoutOffset = vc.bottomLayoutGuide.length;
-  CGRect safeArea = vc.view.bounds;
-  safeArea.origin.y += topLayoutOffset;
-  safeArea.size.height -= topLayoutOffset + bottomLayoutOffset;
-  CGRect localSafeArea = [vc.view convertRect:safeArea toView:self];
-  UIEdgeInsets safeAreaInsets = UIEdgeInsetsMake(0, 0, 0, 0);
-  if (CGRectGetMinY(localSafeArea) > CGRectGetMinY(self.bounds)) {
-    safeAreaInsets.top = CGRectGetMinY(localSafeArea) - CGRectGetMinY(self.bounds);
-  }
-  if (CGRectGetMaxY(localSafeArea) < CGRectGetMaxY(self.bounds)) {
-    safeAreaInsets.bottom = CGRectGetMaxY(self.bounds) - CGRectGetMaxY(localSafeArea);
-  }
-
-  return safeAreaInsets;
-}
+#endif // [macOS]
 
 static BOOL UIEdgeInsetsEqualToEdgeInsetsWithThreshold(UIEdgeInsets insets1, UIEdgeInsets insets2, CGFloat threshold)
 {
@@ -95,21 +55,7 @@ static BOOL UIEdgeInsetsEqualToEdgeInsetsWithThreshold(UIEdgeInsets insets1, UIE
 
 - (void)safeAreaInsetsDidChange
 {
-  [self invalidateSafeAreaInsets];
-}
-
-- (void)invalidateSafeAreaInsets
-{
-  [self setSafeAreaInsets:self.safeAreaInsetsIfSupportedAndEnabled];
-}
-
-- (void)layoutSubviews
-{
-  [super layoutSubviews];
-
-  if (!self.isSupportedByOS && self.emulateUnlessSupported) {
-    [self invalidateSafeAreaInsets];
-  }
+  [self setSafeAreaInsets:self.safeAreaInsets];
 }
 
 - (void)setSafeAreaInsets:(UIEdgeInsets)safeAreaInsets
@@ -124,19 +70,5 @@ static BOOL UIEdgeInsetsEqualToEdgeInsetsWithThreshold(UIEdgeInsets insets1, UIE
   [_bridge.uiManager setLocalData:localData forView:self];
 }
 
-- (void)setEmulateUnlessSupported:(BOOL)emulateUnlessSupported
-{
-  if (_emulateUnlessSupported == emulateUnlessSupported) {
-    return;
-  }
-
-  _emulateUnlessSupported = emulateUnlessSupported;
-
-  if ([self isSupportedByOS]) {
-    return;
-  }
-
-  [self invalidateSafeAreaInsets];
-}
-
 @end
+#endif // [macOS]

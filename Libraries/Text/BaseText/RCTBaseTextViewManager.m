@@ -1,17 +1,20 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 #import <React/RCTBaseTextViewManager.h>
+#if TARGET_OS_OSX // [macOS
+#import <React/RCTCursor.h>
+#endif // macOS]
 
 @implementation RCTBaseTextViewManager
 
 RCT_EXPORT_MODULE(RCTBaseText)
 
-- (RCTUIView *)view // TODO(macOS ISS#3536887)
+- (RCTUIView *)view // [macOS]
 {
   RCTAssert(NO, @"The `-[RCTBaseTextViewManager view]` property must be overridden in subclass.");
   return nil;
@@ -36,13 +39,14 @@ RCT_REMAP_SHADOW_PROPERTY(fontWeight, textAttributes.fontWeight, NSString)
 RCT_REMAP_SHADOW_PROPERTY(fontStyle, textAttributes.fontStyle, NSString)
 RCT_REMAP_SHADOW_PROPERTY(fontVariant, textAttributes.fontVariant, NSArray)
 RCT_REMAP_SHADOW_PROPERTY(allowFontScaling, textAttributes.allowFontScaling, BOOL)
+RCT_REMAP_SHADOW_PROPERTY(dynamicTypeRamp, textAttributes.dynamicTypeRamp, RCTDynamicTypeRamp) // [macOS]
 RCT_REMAP_SHADOW_PROPERTY(maxFontSizeMultiplier, textAttributes.maxFontSizeMultiplier, CGFloat)
 RCT_REMAP_SHADOW_PROPERTY(letterSpacing, textAttributes.letterSpacing, CGFloat)
-RCT_REMAP_SHADOW_PROPERTY(apple_fontSmoothing, textAttributes.fontSmoothing, RCTFontSmoothing) // TODO(OSS Candidate ISS#2710739)
 // Paragraph Styles
 RCT_REMAP_SHADOW_PROPERTY(lineHeight, textAttributes.lineHeight, CGFloat)
 RCT_REMAP_SHADOW_PROPERTY(textAlign, textAttributes.alignment, NSTextAlignment)
 RCT_REMAP_SHADOW_PROPERTY(writingDirection, textAttributes.baseWritingDirection, NSWritingDirection)
+RCT_REMAP_SHADOW_PROPERTY(lineBreakStrategyIOS, textAttributes.lineBreakStrategy, NSLineBreakStrategy)
 // Decoration
 RCT_REMAP_SHADOW_PROPERTY(textDecorationColor, textAttributes.textDecorationColor, UIColor)
 RCT_REMAP_SHADOW_PROPERTY(textDecorationStyle, textAttributes.textDecorationStyle, NSUnderlineStyle)
@@ -54,5 +58,9 @@ RCT_REMAP_SHADOW_PROPERTY(textShadowColor, textAttributes.textShadowColor, UICol
 // Special
 RCT_REMAP_SHADOW_PROPERTY(isHighlighted, textAttributes.isHighlighted, BOOL)
 RCT_REMAP_SHADOW_PROPERTY(textTransform, textAttributes.textTransform, RCTTextTransform)
+
+#if TARGET_OS_OSX // [macOS
+RCT_REMAP_SHADOW_PROPERTY(cursor, textAttributes.cursor, RCTCursor)
+#endif // macOS]
 
 @end

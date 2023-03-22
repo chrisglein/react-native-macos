@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,8 +9,7 @@
  */
 
 'use strict';
-
-const ReactNativeStyleAttributes = require('./ReactNativeStyleAttributes');
+import ReactNativeStyleAttributes from './ReactNativeStyleAttributes';
 
 const UIView = {
   pointerEvents: true,
@@ -22,9 +21,7 @@ const UIView = {
   accessibilityState: true,
   accessibilityValue: true,
   accessibilityHint: true,
-  acceptsFirstMouse: true, // TODO(macOS GH#774)
-  acceptsKeyboardFocus: true, // TODO(macOS GH#774)
-  enableFocusRing: true, // TODO(macOS GH#774)
+  accessibilityLanguage: true,
   importantForAccessibility: true,
   nativeID: true,
   testID: true,
@@ -37,7 +34,12 @@ const UIView = {
   onAccessibilityEscape: true,
   collapsable: true,
   needsOffscreenAlphaCompositing: true,
-  onMouseEnter: true, // [TODO(macOS GH#774)
+  style: ReactNativeStyleAttributes,
+  // [macOS
+  acceptsFirstMouse: true,
+  enableFocusRing: true,
+  focusable: true,
+  onMouseEnter: true,
   onMouseLeave: true,
   onDragEnter: true,
   onDragLeave: true,
@@ -46,9 +48,8 @@ const UIView = {
   onKeyUp: true,
   validKeysDown: true,
   validKeysUp: true,
-  draggedTypes: true, // ]TODO(macOS GH#774)
-  nextKeyViewTag: true, // TODO(macOS GH#768)
-  style: ReactNativeStyleAttributes,
+  draggedTypes: true,
+  // macOS]
 };
 
 const RCTView = {

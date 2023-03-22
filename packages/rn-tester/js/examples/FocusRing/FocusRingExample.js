@@ -8,7 +8,7 @@
  * @flow
  */
 
-'use strict'; // TODO(OSS Candidate ISS#2710739)
+'use strict'; // [macOS]
 
 const React = require('react');
 const ReactNative = require('react-native');
@@ -16,7 +16,7 @@ import {Platform} from 'react-native';
 const {Text, View, StyleSheet} = ReactNative;
 
 class ViewFocusRingExample extends React.Component<{}> {
-  render() {
+  render(): React.Node {
     return (
       <View>
         {Platform.OS === 'macos' ? (
@@ -65,7 +65,7 @@ exports.description = 'Examples of focus rings enabled and disabled.';
 exports.examples = [
   {
     title: '<View> Example',
-    render: function(): React.Element<any> {
+    render: function (): React.Element<any> {
       return <ViewFocusRingExample />;
     },
   },

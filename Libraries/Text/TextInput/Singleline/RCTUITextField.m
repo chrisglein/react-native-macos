@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,14 +7,15 @@
 
 #import <React/RCTUITextField.h>
 
+#import <React/RCTBackedTextInputDelegateAdapter.h>
+#import <React/RCTBackedTextInputDelegate.h> // [macOS]
+#import <React/RCTTextAttributes.h>
 #import <React/RCTUtils.h>
 #import <React/UIView+React.h>
-#import <React/RCTBackedTextInputDelegateAdapter.h>
-#import <React/RCTBackedTextInputDelegate.h> // TODO(OSS Candidate ISS#2710739)
-#import <React/RCTTextAttributes.h>
 
+#import <React/RCTTouchHandler.h> // [macOS]
 
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS
 
 #if RCT_SUBCLASS_SECURETEXTFIELD
 #define RCTUITextFieldCell RCTUISecureTextFieldCell
@@ -26,6 +27,8 @@
 @property (nonatomic, assign) UIEdgeInsets textContainerInset;
 @property (nonatomic, getter=isAutomaticTextReplacementEnabled) BOOL automaticTextReplacementEnabled;
 @property (nonatomic, getter=isAutomaticSpellingCorrectionEnabled) BOOL automaticSpellingCorrectionEnabled;
+@property (nonatomic, getter=isContinuousSpellCheckingEnabled) BOOL continuousSpellCheckingEnabled;
+@property (nonatomic, getter=isGrammarCheckingEnabled) BOOL grammarCheckingEnabled;
 @property (nonatomic, strong, nullable) RCTUIColor *selectionColor;
 
 @end
@@ -70,15 +73,16 @@
   NSTextView *fieldEditor = (NSTextView *)[super setUpFieldEditorAttributes:textObj];
   fieldEditor.automaticSpellingCorrectionEnabled = self.isAutomaticSpellingCorrectionEnabled;
   fieldEditor.automaticTextReplacementEnabled = self.isAutomaticTextReplacementEnabled;
+  fieldEditor.continuousSpellCheckingEnabled = self.isContinuousSpellCheckingEnabled;
+  fieldEditor.grammarCheckingEnabled = self.isGrammarCheckingEnabled;
   NSMutableDictionary *selectTextAttributes = fieldEditor.selectedTextAttributes.mutableCopy;
   selectTextAttributes[NSBackgroundColorAttributeName] = self.selectionColor ?: [NSColor selectedControlColor];
 	fieldEditor.selectedTextAttributes = selectTextAttributes;
-  fieldEditor.insertionPointColor = self.selectionColor ?: [RCTUIColor selectedControlColor];
   return fieldEditor;
 }
 
 @end
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 
 #ifdef RCT_SUBCLASS_SECURETEXTFIELD
 @implementation RCTUISecureTextField {
@@ -89,9 +93,9 @@
   NSDictionary<NSAttributedStringKey, id> *_defaultTextAttributes;
 }
 
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS
 @dynamic delegate;
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
@@ -102,12 +106,11 @@
                                                  name:UITextFieldTextDidChangeNotification
                                                object:self];
 
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS
     [self setBordered:NO];
     [self setAllowsEditingTextAttributes:YES];
-    [self setAccessibilityRole:NSAccessibilityTextFieldRole];
     [self setBackgroundColor:[NSColor clearColor]];
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 
     _textInputDelegateAdapter = [[RCTBackedTextFieldDelegateAdapter alloc] initWithTextField:self];
     _scrollEnabled = YES;
@@ -119,34 +122,71 @@
 - (void)_textDidChange
 {
   _textWasPasted = NO;
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS
   [self setAttributedText:[[NSAttributedString alloc] initWithString:[self text]
                                                           attributes:[self defaultTextAttributes]]];
-#endif // ]TODO(macOS GH#774)
+  if([[self text] length] == 0) {
+    self.font = [[self defaultTextAttributes] objectForKey:NSFontAttributeName];
+  }
+#endif // macOS]
 }
 
+#if TARGET_OS_OSX // [macOS
+- (BOOL)hasMarkedText
+{
+  return ((NSTextView *)self.currentEditor).hasMarkedText;
+}
+
+- (NSArray<NSAttributedStringKey> *)validAttributesForMarkedText
+{
+	return ((NSTextView *)self.currentEditor).validAttributesForMarkedText;
+}
+
+#endif // macOS]
+  
 #pragma mark - Accessibility
 
+#if !TARGET_OS_OSX // [macOS]
 - (void)setIsAccessibilityElement:(BOOL)isAccessibilityElement
+#else // [macOS
+- (void)setAccessibilityElement:(BOOL)isAccessibilityElement
+#endif // macOS]
 {
   // UITextField is accessible by default (some nested views are) and disabling that is not supported.
   // On iOS accessible elements cannot be nested, therefore enabling accessibility for some container view
-  // (even in a case where this view is a part of public API of TextInput on iOS) shadows some features implemented inside the component.
+  // (even in a case where this view is a part of public API of TextInput on iOS) shadows some features implemented
+  // inside the component.
 }
 
 #pragma mark - Properties
 
 - (void)setTextContainerInset:(UIEdgeInsets)textContainerInset
 {
+  if (UIEdgeInsetsEqualToEdgeInsets(textContainerInset, _textContainerInset)) {
+    return;
+  }
+
   _textContainerInset = textContainerInset;
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   [self setNeedsLayout];
-#else // [TODO(macOS GH#774)
+#else // [macOS
   ((RCTUITextFieldCell*)self.cell).textContainerInset = _textContainerInset;
-#endif // ]TODO(macOS GH#774)
+
+  if (self.currentEditor) {
+    NSRange selectedRange = self.currentEditor.selectedRange;
+
+    // Relocate the NSTextView without changing the selection.
+    [self.cell selectWithFrame:self.bounds
+                        inView:self
+                        editor:self.currentEditor
+                      delegate:self
+                         start:selectedRange.location
+                        length:selectedRange.length];
+  }
+#endif // macOS]
 }
 
-#if TARGET_OS_OSX // TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS
 
 + (Class)cellClass
 {
@@ -193,12 +233,32 @@
   return ((RCTUITextFieldCell*)self.cell).isAutomaticSpellingCorrectionEnabled;
 }
 
-- (void)setSelectionColor:(RCTUIColor *)selectionColor // TODO(OSS Candidate ISS#2710739)
+- (void)setContinuousSpellCheckingEnabled:(BOOL)continuousSpellCheckingEnabled
+{
+  ((RCTUITextFieldCell*)self.cell).continuousSpellCheckingEnabled = continuousSpellCheckingEnabled;
+}
+
+- (BOOL)isContinuousSpellCheckingEnabled
+{
+  return ((RCTUITextFieldCell*)self.cell).isContinuousSpellCheckingEnabled;
+}
+
+- (void)setGrammarCheckingEnabled:(BOOL)grammarCheckingEnabled
+{
+  ((RCTUITextFieldCell*)self.cell).grammarCheckingEnabled = grammarCheckingEnabled;
+}
+
+- (BOOL)isGrammarCheckingEnabled
+{
+  return ((RCTUITextFieldCell*)self.cell).isGrammarCheckingEnabled;
+}
+
+- (void)setSelectionColor:(RCTUIColor *)selectionColor
 {
   ((RCTUITextFieldCell*)self.cell).selectionColor = selectionColor;
 }
 
-- (RCTUIColor*)selectionColor // TODO(OSS Candidate ISS#2710739)
+- (RCTUIColor*)selectionColor
 {
   return ((RCTUITextFieldCell*)self.cell).selectionColor;
 }
@@ -213,28 +273,40 @@
   return ((RCTUITextFieldCell*)self.cell).font;
 }
 
-#endif // ]TODO(macOS GH#774)
+- (void)setEnableFocusRing:(BOOL)enableFocusRing {
+  if (_enableFocusRing != enableFocusRing) {
+    _enableFocusRing = enableFocusRing;
+  }
+
+  if (enableFocusRing) {
+    [self setFocusRingType:NSFocusRingTypeDefault];
+  } else {
+    [self setFocusRingType:NSFocusRingTypeNone];
+  }
+}
+
+#endif // macOS]
 
 - (void)setPlaceholder:(NSString *)placeholder
 {
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   [super setPlaceholder:placeholder];
-#else // [TODO(macOS GH#774)
+#else // [macOS
   [super setPlaceholderString:placeholder];
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
   [self _updatePlaceholder];
 }
 
-- (NSString*)placeholder // [TODO(macOS GH#774)
+- (NSString*)placeholder // [macOS
 {
-#if !TARGET_OS_OSX
+#if !TARGET_OS_OSX // [macOS]
   return super.placeholder;
 #else
   return self.placeholderAttributedString.string ?: self.placeholderString;
 #endif
-} // ]TODO(macOS GH#774)
+} // macOS]
 
-- (void)setPlaceholderColor:(RCTUIColor *)placeholderColor // TODO(OSS Candidate ISS#2710739)
+- (void)setPlaceholderColor:(RCTUIColor *)placeholderColor // [macOS]
 {
   _placeholderColor = placeholderColor;
   [self _updatePlaceholder];
@@ -247,15 +319,17 @@
   }
 
   _defaultTextAttributes = defaultTextAttributes;
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   [super setDefaultTextAttributes:defaultTextAttributes];
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
   [self _updatePlaceholder];
 
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS
   [self setAttributedText:[[NSAttributedString alloc] initWithString:[self text]
                                                           attributes:[self defaultTextAttributes]]];
-#endif // ]TODO(macOS GH#774)
+
+  self.font = [[self defaultTextAttributes] objectForKey:NSFontAttributeName];
+#endif // macOS]
 }
 
 - (NSDictionary<NSAttributedStringKey, id> *)defaultTextAttributes
@@ -265,13 +339,13 @@
 
 - (void)_updatePlaceholder
 {
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   self.attributedPlaceholder = [[NSAttributedString alloc] initWithString:self.placeholder ?: @""
                                                                attributes:[self _placeholderTextAttributes]];
-#else // [TODO(macOS GH#774)
+#else // [macOS
   self.placeholderAttributedString = [[NSAttributedString alloc] initWithString:self.placeholder ?: @""
 																	 attributes:[self _placeholderTextAttributes]];
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 }
 
 - (BOOL)isEditable
@@ -281,14 +355,14 @@
 
 - (void)setEditable:(BOOL)editable
 {
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS
   // on macos the super must be called otherwise its NSTextFieldCell editable property doesn't get set.
   [super setEditable:editable];
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
   self.enabled = editable;
 }
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
 
 - (void)setSecureTextEntry:(BOOL)secureTextEntry
 {
@@ -306,21 +380,22 @@
   self.attributedText = originalText;
 }
 
-#endif // ]TODO(macOS GH#774)
+#endif // [macOS]
 
 
 #pragma mark - Placeholder
 
 - (NSDictionary<NSAttributedStringKey, id> *)_placeholderTextAttributes
 {
-  NSMutableDictionary<NSAttributedStringKey, id> *textAttributes = [_defaultTextAttributes mutableCopy] ?: [NSMutableDictionary new];
+  NSMutableDictionary<NSAttributedStringKey, id> *textAttributes =
+      [_defaultTextAttributes mutableCopy] ?: [NSMutableDictionary new];
 
-  // [TODO(OSS Candidate ISS#2710739)
+  // [macOS
   if (@available(iOS 13.0, *)) {
     [textAttributes setValue:self.placeholderColor ?: [RCTUIColor placeholderTextColor]
                       forKey:NSForegroundColorAttributeName];
   } else {
-  // ]TODO(OSS Candidate ISS#2710739)
+  // macOS]
     if (self.placeholderColor) {
       [textAttributes setValue:self.placeholderColor forKey:NSForegroundColorAttributeName];
     } else {
@@ -333,7 +408,7 @@
 
 #pragma mark - Context Menu
 
-#if !TARGET_OS_OSX // [TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
 {
@@ -367,9 +442,9 @@
   return [self textRectForBounds:bounds];
 }
   
-#else // [TODO(macOS GH#774)
+#else // [macOS
   
-#pragma mark - NSTextViewDelegate methods
+#pragma mark - NSTextFieldDelegate methods
 
 - (void)textDidChange:(NSNotification *)notification
 {
@@ -406,11 +481,20 @@
   return NO;
 }
   
-#endif // ]TODO(macOS GH#774)
+- (NSMenu *)textView:(NSTextView *)view menu:(NSMenu *)menu forEvent:(NSEvent *)event atIndex:(NSUInteger)charIndex
+{
+  if (menu) {
+    [[RCTTouchHandler touchHandlerForView:self] willShowMenuWithEvent:event];
+  }
+
+  return menu;
+}
+
+#endif // macOS]
 
 #pragma mark - Overrides
 
-#if !TARGET_OS_OSX
+#if !TARGET_OS_OSX // [macOS]
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-implementations"
 // Overrides selectedTextRange setter to get notify when selectedTextRange changed.
@@ -420,9 +504,9 @@
   [_textInputDelegateAdapter selectedTextRangeWasSet];
 }
 #pragma clang diagnostic pop
-#endif // !TARGET_OS_OSX
+#endif // [macOS]
 
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS
 - (BOOL)becomeFirstResponder
 {
   BOOL isFirstResponder = [super becomeFirstResponder];
@@ -444,9 +528,20 @@
   }
   return isFirstResponder;
 }
-#endif // ]TODO(macOS GH#774)
+
+- (BOOL)performKeyEquivalent:(NSEvent *)event
+{
+  // The currentEditor is NSText for historical reasons, but documented to be NSTextView.
+  NSTextView *currentEditor = (NSTextView *)self.currentEditor;
+  // The currentEditor is non-nil when focused and hasMarkedText means an IME is open.
+  if (currentEditor && !currentEditor.hasMarkedText && ![self.textInputDelegate textInputShouldHandleKeyEvent:event]) {
+    return YES; // Don't send currentEditor the keydown event.
+  }
+  return [super performKeyEquivalent:event];
+}
+#endif // macOS]
 	
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
 - (void)setSelectedTextRange:(UITextRange *)selectedTextRange notifyDelegate:(BOOL)notifyDelegate
 {
   if (!notifyDelegate) {
@@ -460,10 +555,10 @@
 
 - (void)paste:(id)sender
 {
-  [super paste:sender];
   _textWasPasted = YES;
+  [super paste:sender];
 }
-#else // [TODO(macOS GH#774)
+#else // [macOS
 - (void)setSelectedTextRange:(NSRange)selectedTextRange notifyDelegate:(BOOL)notifyDelegate
 {
   if (!notifyDelegate) {
@@ -479,7 +574,7 @@
 {
   return [[self currentEditor] selectedRange];
 }
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 
 #pragma mark - Layout
 
@@ -493,10 +588,10 @@
 {
   // Note: `placeholder` defines intrinsic size for `<TextInput>`.
   NSString *text = self.placeholder ?: @"";
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   CGSize size = [text sizeWithAttributes:[self _placeholderTextAttributes]];
   size = CGSizeMake(RCTCeilPixelValue(size.width), RCTCeilPixelValue(size.height));
-#else // [TODO(macOS GH#774)
+#else // [macOS
   CGSize size = [text sizeWithAttributes:@{NSFontAttributeName: self.font}];
   CGFloat scale = self.window.backingScaleFactor;
   RCTAssert(scale != 0.0, @"Layout occurs before the view is in a window?");
@@ -504,7 +599,7 @@
     scale = [[NSScreen mainScreen] backingScaleFactor];
   }
   size = CGSizeMake(RCTCeilPixelValue(size.width, scale), RCTCeilPixelValue(size.height, scale));
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
   size.width += _textContainerInset.left + _textContainerInset.right;
   size.height += _textContainerInset.top + _textContainerInset.bottom;
   // Returning size DOES contain `textContainerInset` (aka `padding`).
@@ -518,13 +613,19 @@
   return CGSizeMake(MIN(size.width, intrinsicSize.width), MIN(size.height, intrinsicSize.height));
 }
 
-#if !TARGET_OS_OSX // [TODO(OSS Candidate ISS#2710739)
+#if !TARGET_OS_OSX // [macOS]
 - (void)deleteBackward {
   id<RCTBackedTextInputDelegate> textInputDelegate = [self textInputDelegate];
   if ([textInputDelegate textInputShouldHandleDeleteBackward:self]) {
     [super deleteBackward];
   }
 }
-#endif // ]TODO(OSS Candidate ISS#2710739)
+#else // [macOS
+- (void)keyUp:(NSEvent *)event {
+  if ([self.textInputDelegate textInputShouldHandleKeyEvent:event]) {
+    [super keyUp:event];
+  }
+}
+#endif // macOS]
 
 @end

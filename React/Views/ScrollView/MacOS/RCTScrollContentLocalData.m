@@ -5,18 +5,22 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// [macOS]
+
+#if TARGET_OS_OSX
 #import "RCTScrollContentLocalData.h"
 
 @implementation RCTScrollContentLocalData
 
-- (instancetype)initWithVerticalScroller:(NSScroller *)verticalScroller
-                      horizontalScroller:(NSScroller *)horizontalScroller
+- (instancetype)initWithVerticalScrollerWidth:(CGFloat)verticalScrollerWidth
+										 horizontalScrollerHeight:(CGFloat)horizontalScrollerHeight;
 {
   if (self = [super init]) {
-    _verticalScrollerWidth = NSWidth([verticalScroller frame]);
-    _horizontalScrollerHeight = NSHeight([horizontalScroller frame]);
+    _verticalScrollerWidth = verticalScrollerWidth;
+    _horizontalScrollerHeight = horizontalScrollerHeight;
   }
   return self;
 }
 
 @end
+#endif

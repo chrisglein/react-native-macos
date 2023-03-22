@@ -1,42 +1,50 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-#import <React/RCTUIKit.h> // TODO(macOS GH#774)
+#import <React/RCTUIKit.h> // [macOS]
 
+#import <React/RCTBorderCurve.h>
 #import <React/RCTBorderStyle.h>
 #import <React/RCTComponent.h>
-#import <React/RCTEventDispatcher.h> // TODO(OSS Candidate ISS#2710739)
+#import <React/RCTEventDispatcherProtocol.h> // [macOS]
 #import <React/RCTPointerEvents.h>
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS
+#import <React/RCTCursor.h>
+#endif // macOS]
+
+#if !TARGET_OS_OSX // [macOS]
 extern const UIAccessibilityTraits SwitchAccessibilityTrait;
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
 
 @protocol RCTAutoInsetsProtocol;
 
-@class RCTView;
+@interface RCTView : RCTUIView // [macOS]
 
-@interface RCTView : RCTUIView // TODO(macOS ISS#3536887)
-
-// [TODO(OSS Candidate ISS#2710739)
-- (instancetype)initWithEventDispatcher:(RCTEventDispatcher *)eventDispatcher;
+// [macOS
+- (instancetype)initWithEventDispatcher:(id<RCTEventDispatcherProtocol>)eventDispatcher;
 
 - (BOOL)becomeFirstResponder;
 - (BOOL)resignFirstResponder;
-// ]TODO(OSS Candidate ISS#2710739)
+
+#if TARGET_OS_OSX
+- (NSDictionary*)dataTransferInfoFromPasteboard:(NSPasteboard*)pasteboard;
+- (BOOL)handleKeyboardEvent:(NSEvent *)event;
+#endif
+// macOS]
 
 /**
  * Accessibility event handlers
  */
 @property (nonatomic, copy) RCTDirectEventBlock onAccessibilityAction;
 @property (nonatomic, copy) RCTDirectEventBlock onAccessibilityTap;
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
 @property (nonatomic, copy) RCTDirectEventBlock onMagicTap;
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
 @property (nonatomic, copy) RCTDirectEventBlock onAccessibilityEscape;
 
 /**
@@ -44,16 +52,9 @@ extern const UIAccessibilityTraits SwitchAccessibilityTrait;
  */
 @property (nonatomic, assign) RCTPointerEvents pointerEvents;
 
-+ (void)autoAdjustInsetsForView:(RCTUIView<RCTAutoInsetsProtocol> *)parentView // TODO(macOS ISS#3536887)
-                 withScrollView:(RCTUIScrollView *)scrollView // TODO(macOS ISS#3536887) and TODO(macOS ISS#3536887)
++ (void)autoAdjustInsetsForView:(RCTUIView<RCTAutoInsetsProtocol> *)parentView // [macOS]
+                 withScrollView:(RCTUIScrollView *)scrollView // [macOS]
                    updateOffset:(BOOL)updateOffset;
-
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
-/**
- * Find the first view controller whose view, or any subview is the specified view.
- */
-+ (UIEdgeInsets)contentInsetsForView:(UIView *)curView;
-#endif // TODO(macOS GH#774)
 
 /**
  * Layout direction of the view.
@@ -95,13 +96,13 @@ extern const UIAccessibilityTraits SwitchAccessibilityTrait;
 /**
  * Border colors (actually retained).
  */
-@property (nonatomic, assign) CGColorRef borderTopColor;
-@property (nonatomic, assign) CGColorRef borderRightColor;
-@property (nonatomic, assign) CGColorRef borderBottomColor;
-@property (nonatomic, assign) CGColorRef borderLeftColor;
-@property (nonatomic, assign) CGColorRef borderStartColor;
-@property (nonatomic, assign) CGColorRef borderEndColor;
-@property (nonatomic, assign) CGColorRef borderColor;
+@property (nonatomic, strong) RCTUIColor *borderTopColor;
+@property (nonatomic, strong) RCTUIColor *borderRightColor;
+@property (nonatomic, strong) RCTUIColor *borderBottomColor;
+@property (nonatomic, strong) RCTUIColor *borderLeftColor;
+@property (nonatomic, strong) RCTUIColor *borderStartColor;
+@property (nonatomic, strong) RCTUIColor *borderEndColor;
+@property (nonatomic, strong) RCTUIColor *borderColor;
 
 /**
  * Border widths.
@@ -115,6 +116,11 @@ extern const UIAccessibilityTraits SwitchAccessibilityTrait;
 @property (nonatomic, assign) CGFloat borderWidth;
 
 /**
+ * Border curve.
+ */
+@property (nonatomic, assign) RCTBorderCurve borderCurve;
+
+/**
  * Border styles.
  */
 @property (nonatomic, assign) RCTBorderStyle borderStyle;
@@ -124,12 +130,26 @@ extern const UIAccessibilityTraits SwitchAccessibilityTrait;
  */
 @property (nonatomic, assign) UIEdgeInsets hitTestEdgeInsets;
 
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
+/**
+ * (Experimental and unused for Paper) Pointer event handlers.
+ */
+@property (nonatomic, assign) RCTBubblingEventBlock onPointerCancel;
+@property (nonatomic, assign) RCTBubblingEventBlock onPointerDown;
+@property (nonatomic, assign) RCTBubblingEventBlock onPointerMove;
+@property (nonatomic, assign) RCTBubblingEventBlock onPointerUp;
+@property (nonatomic, assign) RCTCapturingEventBlock onPointerEnter;
+@property (nonatomic, assign) RCTCapturingEventBlock onPointerLeave;
+@property (nonatomic, assign) RCTBubblingEventBlock onPointerOver;
+@property (nonatomic, assign) RCTBubblingEventBlock onPointerOut;
+
+#if TARGET_OS_OSX // [macOS
 /**
  * macOS Properties
  */
-@property (nonatomic, copy) RCTDirectEventBlock onDoubleClick;
-@property (nonatomic, copy) RCTDirectEventBlock onClick;
+@property (nonatomic, assign) RCTCursor cursor;
+
+@property (nonatomic, assign) CATransform3D transform3D;
+
 @property (nonatomic, copy) RCTDirectEventBlock onMouseEnter;
 @property (nonatomic, copy) RCTDirectEventBlock onMouseLeave;
 @property (nonatomic, copy) RCTDirectEventBlock onDragEnter;
@@ -141,7 +161,13 @@ extern const UIAccessibilityTraits SwitchAccessibilityTrait;
 @property (nonatomic, copy) RCTDirectEventBlock onKeyUp;
 @property (nonatomic, copy) NSArray<NSString*> *validKeysDown;
 @property (nonatomic, copy) NSArray<NSString*> *validKeysUp;
-#endif // ]TODO(macOS GH#774)
+
+// Shadow Properties
+@property (nonatomic, strong) NSColor *shadowColor;
+@property (nonatomic, assign) CGFloat shadowOpacity;
+@property (nonatomic, assign) CGFloat shadowRadius;
+@property (nonatomic, assign) CGSize shadowOffset;
+#endif // macOS]
 
 /**
  * Common Focus Properties

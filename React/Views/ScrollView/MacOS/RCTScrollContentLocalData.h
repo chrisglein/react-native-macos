@@ -5,6 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// [macOS]
+
+#if TARGET_OS_OSX 
 #import <AppKit/AppKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -14,9 +17,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) CGFloat horizontalScrollerHeight;
 @property (nonatomic, assign) CGFloat verticalScrollerWidth;
 
-- (instancetype)initWithVerticalScroller:(nullable NSScroller *)verticalScroller
-                      horizontalScroller:(nullable NSScroller *)horizontalScroller;
+- (instancetype)initWithVerticalScrollerWidth:(CGFloat)verticalScrollerWidth
+                     horizontalScrollerHeight:(CGFloat)horizontalScrollerHeight;
 
 @end
 
 NS_ASSUME_NONNULL_END
+
+#endif // [macOS]

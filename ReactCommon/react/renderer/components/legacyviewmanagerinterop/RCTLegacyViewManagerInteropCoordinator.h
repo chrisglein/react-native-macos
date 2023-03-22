@@ -1,12 +1,13 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
+#import <React/RCTBridgeModuleDecorator.h>
+#import <React/RCTUIKit.h> // [macOS]
 #include <folly/dynamic.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -18,15 +19,17 @@ typedef void (^InterceptorBlock)(std::string eventName, folly::dynamic event);
 
 @interface RCTLegacyViewManagerInteropCoordinator : NSObject
 
-- (instancetype)initWithComponentData:(RCTComponentData *)componentData bridge:(RCTBridge *)bridge;
+- (instancetype)initWithComponentData:(RCTComponentData *)componentData
+                               bridge:(RCTBridge *)bridge
+                bridgelessInteropData:(RCTBridgeModuleDecorator *)bridgelessInteropData;
 
-- (UIView *)paperView;
+- (RCTUIView *)createPaperViewWithTag:(NSInteger)tag; // [macOS]
 
 - (void)addObserveForTag:(NSInteger)tag usingBlock:(InterceptorBlock)block;
 
 - (void)removeObserveForTag:(NSInteger)tag;
 
-- (void)setProps:(folly::dynamic const &)props forView:(UIView *)view;
+- (void)setProps:(folly::dynamic const &)props forView:(RCTUIView *)view; // [macOS]
 
 - (NSString *)componentViewName;
 

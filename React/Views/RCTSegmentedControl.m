@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,9 +8,8 @@
 #import "RCTSegmentedControl.h"
 
 #import "RCTConvert.h"
-#import "RCTEventDispatcher.h"
 #import "UIView+React.h"
-#import "RCTUIKit.h" // TODO(macOS GH#774)
+#import "RCTUIKit.h" // [macOS]
 
 @implementation RCTSegmentedControl
 
@@ -18,13 +17,13 @@
 {
   if ((self = [super initWithFrame:frame])) {
     _selectedIndex = self.selectedSegmentIndex;
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
     [self addTarget:self action:@selector(didChange) forControlEvents:UIControlEventValueChanged];
-#else // [TODO(macOS GH#774)
+#else // [macOS
     self.segmentStyle = NSSegmentStyleRounded;    
     self.target = self;
     self.action = @selector(didChange);
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
   }
   return self;
 }
@@ -32,27 +31,27 @@
 - (void)setValues:(NSArray<NSString *> *)values
 {
   _values = [values copy];
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   [self removeAllSegments];
   for (NSString *value in values) {
     [self insertSegmentWithTitle:value atIndex:self.numberOfSegments animated:NO];
   }
-#else // [TODO(macOS GH#774)
+#else // [macOS
   self.segmentCount = values.count;
   for (NSUInteger i = 0; i < values.count; i++) {
     [self setLabel:values[i] forSegment:i];
   }
-#endif // ]TODO(macOS GH#774)
-  self.selectedSegmentIndex = _selectedIndex; // TODO(macOS GH#774)
+#endif // macOS]
+  self.selectedSegmentIndex = _selectedIndex; // [macOS]
 }
 
 - (void)setSelectedIndex:(NSInteger)selectedIndex
 {
   _selectedIndex = selectedIndex;
-  self.selectedSegmentIndex = selectedIndex; // TODO(macOS GH#774)
+  self.selectedSegmentIndex = selectedIndex; // [macOS]
 }
 
-- (void)setBackgroundColor:(RCTUIColor *)backgroundColor // TODO(macOS GH#774)
+- (void)setBackgroundColor:(RCTUIColor *)backgroundColor // [macOS]
 {
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && defined(__IPHONE_13_0) && \
     __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0
@@ -62,7 +61,7 @@
 #endif
 }
 
-- (void)setTextColor:(RCTUIColor *)textColor // TODO(macOS GH#774)
+- (void)setTextColor:(RCTUIColor *)textColor // [macOS]
 {
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && defined(__IPHONE_13_0) && \
     __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0
@@ -72,8 +71,8 @@
 #endif
 }
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774) - no concept of tintColor on macOS
-- (void)setTintColor:(UIColor *)tintColor // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS] no concept of tintColor on macOS
+- (void)setTintColor:(UIColor *)tintColor // [macOS]
 {
   [super setTintColor:tintColor];
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && defined(__IPHONE_13_0) && \
@@ -86,7 +85,7 @@
   }
 #endif
 }
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
 
 - (void)didChange
 {
@@ -96,7 +95,7 @@
   }
 }
 
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS
 
 - (BOOL)isFlipped
 {
@@ -138,6 +137,6 @@
   return self.segmentCount;
 }
 
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 
 @end

@@ -8,14 +8,13 @@
  *
  */
 
-// TODO(macOS GH#774)
+// [macOS]
 
 'use strict';
 
-const React = require('react');
 const View = require('../View/View');
-
 const RCTDatePickerNativeComponentMacOS = require('./RCTDatePickerNativeComponentMacOS');
+const React = require('react');
 
 type Event = Object;
 
@@ -108,7 +107,7 @@ class DatePickerMacOS extends React.Component<Props> {
         date: propsTimeStamp,
       });
     }
-  }
+  };
 
   render() {
     const props = this.props;

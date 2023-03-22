@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,16 +9,15 @@
 
 #import <React/UIView+React.h>
 
-@implementation RCTInputAccessoryViewContent
-{
-  RCTUIView *_safeAreaContainer; // TODO(macOS GH#774)
+@implementation RCTInputAccessoryViewContent {
+  RCTUIView *_safeAreaContainer; // [macOS]
   NSLayoutConstraint *_heightConstraint;
 }
 
 - (instancetype)init
 {
   if (self = [super init]) {
-    _safeAreaContainer = [RCTUIView new]; // TODO(macOS GH#774)
+    _safeAreaContainer = [RCTUIView new]; // [macOS]
     [self addSubview:_safeAreaContainer];
 
     // Use autolayout to position the view properly and take into account
@@ -30,21 +29,17 @@
     _heightConstraint = [_safeAreaContainer.heightAnchor constraintEqualToConstant:0];
     _heightConstraint.active = YES;
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
-    if (@available(iOS 11.0, *)) {
-      [_safeAreaContainer.bottomAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.bottomAnchor].active = YES;
-      [_safeAreaContainer.topAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.topAnchor].active = YES;
-      [_safeAreaContainer.leadingAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.leadingAnchor].active = YES;
-      [_safeAreaContainer.trailingAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.trailingAnchor].active = YES;
-    } else {
-#endif // TODO(macOS GH#774)
-      [_safeAreaContainer.bottomAnchor constraintEqualToAnchor:self.bottomAnchor].active = YES;
-      [_safeAreaContainer.topAnchor constraintEqualToAnchor:self.topAnchor].active = YES;
-      [_safeAreaContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor].active = YES;
-      [_safeAreaContainer.trailingAnchor constraintEqualToAnchor:self.trailingAnchor].active = YES;
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
-    }
-#endif // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
+    [_safeAreaContainer.bottomAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.bottomAnchor].active = YES;
+    [_safeAreaContainer.topAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.topAnchor].active = YES;
+    [_safeAreaContainer.leadingAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.leadingAnchor].active = YES;
+    [_safeAreaContainer.trailingAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.trailingAnchor].active = YES;
+#else // [macOS
+    [_safeAreaContainer.bottomAnchor constraintEqualToAnchor:self.bottomAnchor].active = YES;
+    [_safeAreaContainer.topAnchor constraintEqualToAnchor:self.topAnchor].active = YES;
+    [_safeAreaContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor].active = YES;
+    [_safeAreaContainer.trailingAnchor constraintEqualToAnchor:self.trailingAnchor].active = YES;
+#endif // macOS]
   }
   return self;
 }
@@ -68,13 +63,13 @@
   [self layoutIfNeeded];
 }
 
-- (void)insertReactSubview:(RCTUIView *)subview atIndex:(NSInteger)index // TODO(macOS GH#774)
+- (void)insertReactSubview:(RCTUIView *)subview atIndex:(NSInteger)index // [macOS]
 {
   [super insertReactSubview:subview atIndex:index];
   [_safeAreaContainer insertSubview:subview atIndex:index];
 }
 
-- (void)removeReactSubview:(RCTUIView *)subview // TODO(macOS GH#774)
+- (void)removeReactSubview:(RCTUIView *)subview // [macOS]
 {
   [super removeReactSubview:subview];
   [subview removeFromSuperview];

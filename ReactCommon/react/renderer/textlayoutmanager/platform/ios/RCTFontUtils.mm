@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -118,7 +118,11 @@ UIFont *RCTFontWithFontProperties(RCTFontProperties fontProperties)
     // the specific metrics of the standard system font as closely as possible.
     font = RCTDefaultFontWithFontProperties(fontProperties);
   } else {
+#if !TARGET_OS_OSX // [macOS]
     NSArray<NSString *> *fontNames = [UIFont fontNamesForFamilyName:fontProperties.family];
+#else // [macOS
+    NSArray<NSString *> *fontNames = @[];
+#endif // macOS]
 
     if (fontNames.count == 0) {
       // Gracefully handle being given a font name rather than font family, for

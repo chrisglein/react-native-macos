@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -19,9 +19,9 @@ const {
   Alert,
 } = require('react-native');
 
-const {examples: SharedAlertExamples} = require('./AlertExample');
+import {examples as SharedAlertExamples} from './AlertExample';
 
-import type {RNTesterExampleModuleItem} from '../../types/RNTesterTypes';
+import type {RNTesterModuleExample} from '../../types/RNTesterTypes';
 
 type Props = $ReadOnly<{||}>;
 type State = {|promptValue: ?string|};
@@ -29,10 +29,12 @@ type State = {|promptValue: ?string|};
 class PromptOptions extends React.Component<Props, State> {
   customButtons: Array<Object>;
 
-  constructor(props) {
+  constructor(props: void | Props) {
     super(props);
 
-    // $FlowFixMe this seems to be a Flow bug, `saveResponse` is defined below
+    /* $FlowFixMe[cannot-write] this seems to be a Flow bug, `saveResponse` is
+     * defined below */
+    // $FlowFixMe[method-unbinding] added when improving typing for this parameters
     this.saveResponse = this.saveResponse.bind(this);
 
     this.customButtons = [
@@ -51,7 +53,7 @@ class PromptOptions extends React.Component<Props, State> {
     };
   }
 
-  render() {
+  render(): React.Node {
     return (
       <View>
         <Text style={styles.promptValue}>
@@ -61,6 +63,8 @@ class PromptOptions extends React.Component<Props, State> {
 
         <TouchableHighlight
           style={styles.wrapper}
+          // $FlowFixMe[method-unbinding] added when improving typing for this parameters
+          // $FlowFixMe[incompatible-call]
           onPress={() => Alert.prompt('Type a value', null, this.saveResponse)}>
           <View style={styles.button}>
             <Text>prompt with title & callback</Text>
@@ -100,6 +104,8 @@ class PromptOptions extends React.Component<Props, State> {
             Alert.prompt(
               'Type a value',
               null,
+              // $FlowFixMe[method-unbinding] added when improving typing for this parameters
+              // $FlowFixMe[incompatible-call]
               this.saveResponse,
               undefined,
               'Default value',
@@ -131,10 +137,84 @@ class PromptOptions extends React.Component<Props, State> {
     );
   }
 
-  saveResponse(promptValue) {
+  saveResponse(promptValue: any) {
     this.setState({promptValue: JSON.stringify(promptValue)});
   }
 }
+
+// [macOS
+const PromptPresentation = () => {
+  return (
+    <View>
+      <TouchableHighlight
+        style={styles.wrapper}
+        onPress={() =>
+          Alert.promptMacOS(
+            'Default sheet',
+            null,
+            null,
+            'default',
+            [{default: '', placeholder: ''}],
+            false,
+          )
+        }>
+        <View style={styles.button}>
+          <Text>Default sheet</Text>
+        </View>
+      </TouchableHighlight>
+      <TouchableHighlight
+        style={styles.wrapper}
+        onPress={() =>
+          Alert.promptMacOS(
+            'Modal',
+            null,
+            null,
+            'default',
+            [{default: '', placeholder: ''}],
+            true,
+          )
+        }>
+        <View style={styles.button}>
+          <Text>Modal</Text>
+        </View>
+      </TouchableHighlight>
+    </View>
+  );
+};
+
+const PromptStyle = () => {
+  return (
+    <View>
+      <TouchableHighlight
+        style={styles.wrapper}
+        onPress={() =>
+          Alert.promptMacOS('Default warning style', null, null, 'default')
+        }>
+        <View style={styles.button}>
+          <Text>Default warning style</Text>
+        </View>
+      </TouchableHighlight>
+      <TouchableHighlight
+        style={styles.wrapper}
+        onPress={() =>
+          Alert.promptMacOS(
+            'Critical',
+            null,
+            null,
+            'default',
+            [{default: '', placeholder: ''}],
+            false,
+            true,
+          )
+        }>
+        <View style={styles.button}>
+          <Text>Critical</Text>
+        </View>
+      </TouchableHighlight>
+    </View>
+  );
+};
+// [macOS]
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -155,7 +235,7 @@ const styles = StyleSheet.create({
 
 exports.framework = 'React';
 exports.title = 'Alerts';
-exports.description = 'iOS alerts and action sheets';
+exports.description = 'iOS / macOS alerts and action sheets'; // [macOS]
 exports.documentationURL = 'https://reactnative.dev/docs/alert';
 exports.examples = ([
   ...SharedAlertExamples,
@@ -199,4 +279,20 @@ exports.examples = ([
       );
     },
   },
-]: RNTesterExampleModuleItem[]);
+  // [macOS
+  {
+    title: 'Prompt Presentation',
+    platform: 'macos',
+    render(): React.Node {
+      return <PromptPresentation />;
+    },
+  },
+  {
+    title: 'Prompt Style',
+    platform: 'macos',
+    render(): React.Node {
+      return <PromptStyle />;
+    },
+  },
+  // [macOS]
+]: Array<RNTesterModuleExample>);

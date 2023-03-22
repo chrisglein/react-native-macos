@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -39,7 +39,7 @@
   self.snapshotController.recordMode = recordMode;
 }
 
-- (BOOL)compareSnapshotOfView:(RCTUIView *)view // TODO(macOS GH#774)
+- (BOOL)compareSnapshotOfView:(RCTUIView *)view // [macOS]
      referenceImagesDirectory:(NSString *)referenceImagesDirectory
                    identifier:(NSString *)identifier
                         error:(NSError **)errorPtr

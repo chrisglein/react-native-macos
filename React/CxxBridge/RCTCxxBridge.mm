@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -12,6 +12,9 @@
 #import <React/RCTBridge+Private.h>
 #import <React/RCTBridge.h>
 #import <React/RCTBridgeMethod.h>
+#import <React/RCTBridgeModule.h>
+#import <React/RCTBridgeModuleDecorator.h>
+#import <React/RCTConstants.h>
 #import <React/RCTConvert.h>
 #import <React/RCTCxxBridgeDelegate.h>
 #import <React/RCTCxxModule.h>
@@ -26,8 +29,9 @@
 #import <React/RCTProfile.h>
 #import <React/RCTRedBox.h>
 #import <React/RCTReloadCommand.h>
+#import <React/RCTTurboModuleRegistry.h>
 #import <React/RCTUtils.h>
-#import <React/RCTBundleURLProvider.h> // TODO(macOS GH#774)
+#import <React/RCTBundleURLProvider.h> // [macOS]
 #import <cxxreact/CxxNativeModule.h>
 #import <cxxreact/Instance.h>
 #import <cxxreact/JSBundleType.h>
@@ -38,11 +42,16 @@
 #import <jsireact/JSIExecutor.h>
 #import <reactperflogger/BridgeNativeModulePerfLogger.h>
 
-#if TARGET_OS_OSX && __has_include(<hermes/hermes.h>)
+#ifndef RCT_USE_HERMES
+#if __has_include(<reacthermes/HermesExecutorFactory.h>)
 #define RCT_USE_HERMES 1
+#else
+#define RCT_USE_HERMES 0
 #endif
+#endif
+
 #if RCT_USE_HERMES
-#import "HermesExecutorFactory.h"
+#import <reacthermes/HermesExecutorFactory.h>
 #else
 #import "JSCExecutorFactory.h"
 #endif
@@ -70,7 +79,7 @@ using namespace facebook::react;
 /**
  * Must be kept in sync with `MessageQueue.js`.
  */
-typedef NS_ENUM(NSUInteger, RCTBridgeFields) {
+typedef NS_ENUM(NSInteger, RCTBridgeFields) {
   RCTBridgeFieldRequestModuleIDs = 0,
   RCTBridgeFieldMethodIDs,
   RCTBridgeFieldParams,
@@ -106,13 +115,6 @@ class GetDescAdapter : public JSExecutorFactory {
 
 }
 
-static bool isRAMBundle(NSData *script)
-{
-  BundleHeader header;
-  [script getBytes:&header length:sizeof(header)];
-  return parseTypeFromHeader(header) == ScriptTag::RAMBundle;
-}
-
 static void notifyAboutModuleSetup(RCTPerformanceLogger *performanceLogger, const char *tag)
 {
   NSString *moduleName = [[NSString alloc] initWithUTF8String:tag];
@@ -127,40 +129,50 @@ static void notifyAboutModuleSetup(RCTPerformanceLogger *performanceLogger, cons
   }
 }
 
+static void mapReactMarkerToPerformanceLogger(
+    const ReactMarker::ReactMarkerId markerId,
+    RCTPerformanceLogger *performanceLogger,
+    const char *tag)
+{
+  switch (markerId) {
+    case ReactMarker::RUN_JS_BUNDLE_START:
+      [performanceLogger markStartForTag:RCTPLScriptExecution];
+      break;
+    case ReactMarker::RUN_JS_BUNDLE_STOP:
+      [performanceLogger markStopForTag:RCTPLScriptExecution];
+      break;
+    case ReactMarker::NATIVE_REQUIRE_START:
+      [performanceLogger appendStartForTag:RCTPLRAMNativeRequires];
+      break;
+    case ReactMarker::NATIVE_REQUIRE_STOP:
+      [performanceLogger appendStopForTag:RCTPLRAMNativeRequires];
+      [performanceLogger addValue:1 forTag:RCTPLRAMNativeRequiresCount];
+      break;
+    case ReactMarker::NATIVE_MODULE_SETUP_START:
+      [performanceLogger markStartForTag:RCTPLNativeModuleSetup];
+      break;
+    case ReactMarker::NATIVE_MODULE_SETUP_STOP:
+      [performanceLogger markStopForTag:RCTPLNativeModuleSetup];
+      notifyAboutModuleSetup(performanceLogger, tag);
+      break;
+      // Not needed in bridge mode.
+    case ReactMarker::REACT_INSTANCE_INIT_START:
+    case ReactMarker::REACT_INSTANCE_INIT_STOP:
+      // Not used on iOS.
+    case ReactMarker::CREATE_REACT_CONTEXT_STOP:
+    case ReactMarker::JS_BUNDLE_STRING_CONVERT_START:
+    case ReactMarker::JS_BUNDLE_STRING_CONVERT_STOP:
+    case ReactMarker::REGISTER_JS_SEGMENT_START:
+    case ReactMarker::REGISTER_JS_SEGMENT_STOP:
+      break;
+  }
+}
+
 static void registerPerformanceLoggerHooks(RCTPerformanceLogger *performanceLogger)
 {
   __weak RCTPerformanceLogger *weakPerformanceLogger = performanceLogger;
-  ReactMarker::logTaggedMarker = [weakPerformanceLogger](
-                                     const ReactMarker::ReactMarkerId markerId, const char *__unused tag) {
-    switch (markerId) {
-      case ReactMarker::RUN_JS_BUNDLE_START:
-        [weakPerformanceLogger markStartForTag:RCTPLScriptExecution];
-        break;
-      case ReactMarker::RUN_JS_BUNDLE_STOP:
-        [weakPerformanceLogger markStopForTag:RCTPLScriptExecution];
-        break;
-      case ReactMarker::NATIVE_REQUIRE_START:
-        [weakPerformanceLogger appendStartForTag:RCTPLRAMNativeRequires];
-        break;
-      case ReactMarker::NATIVE_REQUIRE_STOP:
-        [weakPerformanceLogger appendStopForTag:RCTPLRAMNativeRequires];
-        [weakPerformanceLogger addValue:1 forTag:RCTPLRAMNativeRequiresCount];
-        break;
-      case ReactMarker::NATIVE_MODULE_SETUP_START:
-        [weakPerformanceLogger markStartForTag:RCTPLNativeModuleSetup];
-        break;
-      case ReactMarker::NATIVE_MODULE_SETUP_STOP:
-        [weakPerformanceLogger markStopForTag:RCTPLNativeModuleSetup];
-        notifyAboutModuleSetup(weakPerformanceLogger, tag);
-        break;
-      case ReactMarker::CREATE_REACT_CONTEXT_STOP:
-      case ReactMarker::JS_BUNDLE_STRING_CONVERT_START:
-      case ReactMarker::JS_BUNDLE_STRING_CONVERT_STOP:
-      case ReactMarker::REGISTER_JS_SEGMENT_START:
-      case ReactMarker::REGISTER_JS_SEGMENT_STOP:
-        // These are not used on iOS.
-        break;
-    }
+  ReactMarker::logTaggedMarker = [weakPerformanceLogger](const ReactMarker::ReactMarkerId markerId, const char *tag) {
+    mapReactMarkerToPerformanceLogger(markerId, weakPerformanceLogger, tag);
   };
 }
 
@@ -210,6 +222,11 @@ struct RCTInstanceCallback : public InstanceCallback {
 
   // Necessary for searching in TurboModules in TurboModuleManager
   id<RCTTurboModuleRegistry> _turboModuleRegistry;
+
+  RCTModuleRegistry *_objCModuleRegistry;
+  RCTViewRegistry *_viewRegistry_DEPRECATED;
+  RCTBundleManager *_bundleManager;
+  RCTCallableJSModules *_callableJSModules;
 }
 
 @synthesize bridgeDescription = _bridgeDescription;
@@ -217,9 +234,25 @@ struct RCTInstanceCallback : public InstanceCallback {
 @synthesize performanceLogger = _performanceLogger;
 @synthesize valid = _valid;
 
+- (RCTModuleRegistry *)moduleRegistry
+{
+  return _objCModuleRegistry;
+}
+
 - (void)setRCTTurboModuleRegistry:(id<RCTTurboModuleRegistry>)turboModuleRegistry
 {
   _turboModuleRegistry = turboModuleRegistry;
+  [_objCModuleRegistry setTurboModuleRegistry:_turboModuleRegistry];
+}
+
+- (void)attachBridgeAPIsToTurboModule:(id<RCTTurboModule>)module
+{
+  RCTBridgeModuleDecorator *bridgeModuleDecorator =
+      [[RCTBridgeModuleDecorator alloc] initWithViewRegistry:_viewRegistry_DEPRECATED
+                                              moduleRegistry:_objCModuleRegistry
+                                               bundleManager:_bundleManager
+                                           callableJSModules:_callableJSModules];
+  [bridgeModuleDecorator attachInteropAPIsToModule:(id<RCTBridgeModule>)module];
 }
 
 - (std::shared_ptr<MessageQueueThread>)jsMessageThread
@@ -227,12 +260,12 @@ struct RCTInstanceCallback : public InstanceCallback {
   return _jsMessageThread;
 }
 
-// [TODO(OSS Candidate ISS#2710739)
+// [macOS
 - (std::weak_ptr<Instance>)reactInstance
 {
   return _reactInstance;
 }
-// ]TODO(OSS Candidate ISS#2710739)
+// macOS]
 
 - (BOOL)isInspectable
 {
@@ -263,24 +296,35 @@ struct RCTInstanceCallback : public InstanceCallback {
     _moduleDataByName = [NSMutableDictionary new];
     _moduleClassesByID = [NSMutableArray new];
     _moduleDataByID = [NSMutableArray new];
+    _objCModuleRegistry = [RCTModuleRegistry new];
+    [_objCModuleRegistry setBridge:self];
+    _bundleManager = [RCTBundleManager new];
+    [_bundleManager setBridge:self];
+    _viewRegistry_DEPRECATED = [RCTViewRegistry new];
+    [_viewRegistry_DEPRECATED setBridge:self];
+    _callableJSModules = [RCTCallableJSModules new];
+    [_callableJSModules setBridge:self];
 
     [RCTBridge setCurrentBridge:self];
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(handleMemoryWarning)
                                                  name:UIApplicationDidReceiveMemoryWarningNotification
                                                object:nil];
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
+
+    RCTLogSetBridgeModuleRegistry(_objCModuleRegistry);
+    RCTLogSetBridgeCallableJSModules(_callableJSModules);
   }
   return self;
 }
 
 - (void)dealloc
 {
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   [[NSNotificationCenter defaultCenter] removeObserver:self];
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
 }
 
 + (void)runRunLoop
@@ -318,7 +362,9 @@ struct RCTInstanceCallback : public InstanceCallback {
 
 - (void)handleMemoryWarning
 {
-  if (!_valid || !_loading) {
+  // We only want to run garbage collector when the loading is finished
+  // and the instance is valid.
+  if (!_valid || _loading) {
     return;
   }
 
@@ -326,7 +372,8 @@ struct RCTInstanceCallback : public InstanceCallback {
   // in case if some other tread resets it.
   auto reactInstance = _reactInstance;
   if (reactInstance) {
-    reactInstance->handleMemoryPressure(15 /* TRIM_MEMORY_RUNNING_CRITICAL */);
+    int unloadLevel = RCTGetMemoryPressureUnloadLevel();
+    reactInstance->handleMemoryPressure(unloadLevel);
   }
 }
 
@@ -439,6 +486,14 @@ struct RCTInstanceCallback : public InstanceCallback {
   // Load the source asynchronously, then store it for later execution.
   dispatch_group_enter(prepareBridge);
   __block NSData *sourceCode;
+
+#if (RCT_DEV | RCT_ENABLE_LOADING_VIEW) && __has_include(<React/RCTDevLoadingViewProtocol.h>)
+  {
+    id<RCTDevLoadingViewProtocol> loadingView = [self moduleForName:@"DevLoadingView" lazilyLoadIfNecessary:YES];
+    [loadingView showWithURL:self.bundleURL];
+  }
+#endif
+
   [self
       loadSource:^(NSError *error, RCTSource *source) {
         if (error) {
@@ -450,13 +505,13 @@ struct RCTInstanceCallback : public InstanceCallback {
       }
       onProgress:^(RCTLoadingProgress *progressData) {
 #if (RCT_DEV | RCT_ENABLE_LOADING_VIEW) && __has_include(<React/RCTDevLoadingViewProtocol.h>)
-        // [TODO(OSS Candidate ISS#2710739)
+        // [macOS
         // Note: RCTDevLoadingView should have been loaded at this point, so no need to allow lazy loading.
-        if ([weakSelf isValid] && [[weakSelf devSettings] isDevModeEnabled]) {
+        if ([weakSelf isValid]) {
           id<RCTDevLoadingViewProtocol> loadingView = [weakSelf moduleForName:@"DevLoadingView"
                                                         lazilyLoadIfNecessary:YES];
           [loadingView updateProgress:progressData];
-        } // ]TODO(OSS Candidate ISS#2710739)
+        } // macOS]
 #endif
       }];
 
@@ -655,9 +710,7 @@ struct RCTInstanceCallback : public InstanceCallback {
   // This can only be false if the bridge was invalidated before startup completed
   if (_reactInstance) {
 #if RCT_DEV
-    if ([[self devSettings] isDevModeEnabled]) { // TODO(OSS Candidate ISS#2710739)
-      executorFactory = std::make_shared<GetDescAdapter>(self, executorFactory);
-    } // TODO(OSS Candidate ISS#2710739)
+    executorFactory = std::make_shared<GetDescAdapter>(self, executorFactory);
 #endif
 
     [self _initializeBridgeLocked:executorFactory];
@@ -739,7 +792,12 @@ struct RCTInstanceCallback : public InstanceCallback {
     // TODO #13258411: can we defer this until config generation?
     int32_t moduleDataId = getUniqueId();
     BridgeNativeModulePerfLogger::moduleDataCreateStart([moduleName UTF8String], moduleDataId);
-    moduleData = [[RCTModuleData alloc] initWithModuleClass:moduleClass bridge:self];
+    moduleData = [[RCTModuleData alloc] initWithModuleClass:moduleClass
+                                                     bridge:self
+                                             moduleRegistry:_objCModuleRegistry
+                                    viewRegistry_DEPRECATED:_viewRegistry_DEPRECATED
+                                              bundleManager:_bundleManager
+                                          callableJSModules:_callableJSModules];
     BridgeNativeModulePerfLogger::moduleDataCreateEnd([moduleName UTF8String], moduleDataId);
 
     _moduleDataByName[moduleName] = moduleData;
@@ -757,11 +815,20 @@ struct RCTInstanceCallback : public InstanceCallback {
 {
   RCT_PROFILE_BEGIN_EVENT(RCTProfileTagAlways, @"-[RCTCxxBridge initModulesWithDispatchGroup:] extraModules", nil);
 
-  NSArray<id<RCTBridgeModule>> *extraModules = nil;
+  NSArray<id<RCTBridgeModule>> *appExtraModules = nil;
   if ([self.delegate respondsToSelector:@selector(extraModulesForBridge:)]) {
-    extraModules = [self.delegate extraModulesForBridge:_parentBridge];
+    appExtraModules = [self.delegate extraModulesForBridge:_parentBridge];
   } else if (self.moduleProvider) {
-    extraModules = self.moduleProvider();
+    appExtraModules = self.moduleProvider();
+  }
+
+  NSMutableArray<id<RCTBridgeModule>> *extraModules = [NSMutableArray new];
+
+  // Prevent TurboModules from appearing the NativeModule system
+  for (id<RCTBridgeModule> module in appExtraModules) {
+    if (!(RCTTurboModuleEnabled() && [module conformsToProtocol:@protocol(RCTTurboModule)])) {
+      [extraModules addObject:module];
+    }
   }
 
   RCT_PROFILE_END_EVENT(RCTProfileTagAlways, @"");
@@ -802,7 +869,12 @@ struct RCTInstanceCallback : public InstanceCallback {
     // Instantiate moduleData container
     int32_t moduleDataId = getUniqueId();
     BridgeNativeModulePerfLogger::moduleDataCreateStart([moduleName UTF8String], moduleDataId);
-    RCTModuleData *moduleData = [[RCTModuleData alloc] initWithModuleInstance:module bridge:self];
+    RCTModuleData *moduleData = [[RCTModuleData alloc] initWithModuleInstance:module
+                                                                       bridge:self
+                                                               moduleRegistry:_objCModuleRegistry
+                                                      viewRegistry_DEPRECATED:_viewRegistry_DEPRECATED
+                                                                bundleManager:_bundleManager
+                                                            callableJSModules:_callableJSModules];
     BridgeNativeModulePerfLogger::moduleDataCreateEnd([moduleName UTF8String], moduleDataId);
 
     _moduleDataByName[moduleName] = moduleData;
@@ -853,7 +925,12 @@ struct RCTInstanceCallback : public InstanceCallback {
 
       int32_t moduleDataId = getUniqueId();
       BridgeNativeModulePerfLogger::moduleDataCreateStart([moduleName UTF8String], moduleDataId);
-      moduleData = [[RCTModuleData alloc] initWithModuleClass:moduleClass bridge:self];
+      moduleData = [[RCTModuleData alloc] initWithModuleClass:moduleClass
+                                                       bridge:self
+                                               moduleRegistry:_objCModuleRegistry
+                                      viewRegistry_DEPRECATED:_viewRegistry_DEPRECATED
+                                                bundleManager:_bundleManager
+                                            callableJSModules:_callableJSModules];
       BridgeNativeModulePerfLogger::moduleDataCreateEnd([moduleName UTF8String], moduleDataId);
 
       _moduleDataByName[moduleName] = moduleData;
@@ -1019,12 +1096,10 @@ struct RCTInstanceCallback : public InstanceCallback {
     [self enqueueApplicationScript:sourceCode url:self.bundleURL onComplete:completion];
   }
 
-  if (self.devSettings.isDevModeEnabled) { // TODO(OSS Candidate ISS#2710739)
-    [self.devSettings setupHMRClientWithBundleURL:self.bundleURL];
-  }
+  [self.devSettings setupHMRClientWithBundleURL:self.bundleURL];
 }
 
-#if RCT_DEV_MENU
+#if RCT_DEV_MENU | RCT_PACKAGER_LOADING_FUNCTIONALITY
 - (void)loadAndExecuteSplitBundleURL:(NSURL *)bundleURL
                              onError:(RCTLoadAndExecuteErrorBlock)onError
                           onComplete:(dispatch_block_t)onComplete
@@ -1434,6 +1509,11 @@ RCT_NOT_IMPLEMENTED(-(instancetype)initWithBundleURL
   [self executeApplicationScript:script url:url async:NO];
 }
 
+static uint32_t RCTReadUInt32LE(NSData *script, uint32_t offset)
+{
+  return [script length] < offset + 4 ? 0 : CFSwapInt32LittleToHost(*(((uint32_t *)[script bytes]) + offset / 4));
+}
+
 - (void)executeApplicationScript:(NSData *)script url:(NSURL *)url async:(BOOL)async
 {
   [self _tryAndHandleError:^{
@@ -1442,18 +1522,22 @@ RCT_NOT_IMPLEMENTED(-(instancetype)initWithBundleURL
                                                         object:self->_parentBridge
                                                       userInfo:@{@"bridge" : self}];
 
+    BundleHeader header;
+    [script getBytes:&header length:sizeof(header)];
+    ScriptTag scriptType = parseTypeFromHeader(header);
+
     // hold a local reference to reactInstance in case a parallel thread
     // resets it between null check and usage
     auto reactInstance = self->_reactInstance;
-    if (reactInstance && RCTIsBytecodeBundle(script)) {
-      UInt32 offset = 8;
+    if (reactInstance && scriptType == ScriptTag::MetroHBCBundle) {
+      uint32_t offset = 8;
       while (offset < script.length) {
-        UInt32 fileLength = RCTReadUInt32LE(script, offset);
+        uint32_t fileLength = RCTReadUInt32LE(script, offset);
         NSData *unit = [script subdataWithRange:NSMakeRange(offset + 4, fileLength)];
         reactInstance->loadScriptFromString(std::make_unique<NSDataBigString>(unit), sourceUrlStr.UTF8String, false);
         offset += ((fileLength + RCT_BYTECODE_ALIGNMENT - 1) & ~(RCT_BYTECODE_ALIGNMENT - 1)) + 4;
       }
-    } else if (isRAMBundle(script)) {
+    } else if (scriptType == ScriptTag::RAMBundle) {
       [self->_performanceLogger markStartForTag:RCTPLRAMBundleLoad];
       auto ramBundle = std::make_unique<JSIndexedRAMBundle>(sourceUrlStr.UTF8String);
       std::unique_ptr<const JSBigString> scriptStr = ramBundle->getStartupCode();

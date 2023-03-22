@@ -1,12 +1,11 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 #import "RCTSurfaceHostingView.h"
-
 #import "RCTConstants.h"
 #import "RCTDefines.h"
 #import "RCTSurface.h"
@@ -22,8 +21,8 @@
 @end
 
 @implementation RCTSurfaceHostingView {
-  RCTUIView *_Nullable _activityIndicatorView; // TODO(macOS GH#774)
-  RCTUIView *_Nullable _surfaceView; // TODO(macOS GH#774)
+  RCTUIView *_Nullable _activityIndicatorView; // [macOS]
+  RCTUIView *_Nullable _surfaceView; // [macOS]
   RCTSurfaceStage _stage;
 }
 
@@ -46,8 +45,10 @@ RCT_NOT_IMPLEMENTED(-(nullable instancetype)initWithCoder : (NSCoder *)coder)
   id<RCTSurfaceProtocol> surface = [[self class] createSurfaceWithBridge:bridge
                                                               moduleName:moduleName
                                                        initialProperties:initialProperties];
-  [surface start];
-  return [self initWithSurface:surface sizeMeasureMode:sizeMeasureMode];
+  if (self = [self initWithSurface:surface sizeMeasureMode:sizeMeasureMode]) {
+    [surface start];
+  }
+  return self;
 }
 
 - (instancetype)initWithSurface:(id<RCTSurfaceProtocol>)surface
@@ -60,6 +61,9 @@ RCT_NOT_IMPLEMENTED(-(nullable instancetype)initWithCoder : (NSCoder *)coder)
     _surface.delegate = self;
     _stage = surface.stage;
     [self _updateViews];
+
+    // For backward compatibility with RCTRootView, set a color here instead of transparent (OS default).
+    self.backgroundColor = [RCTUIColor whiteColor]; // [macOS]
   }
 
   return self;
@@ -79,11 +83,11 @@ RCT_NOT_IMPLEMENTED(-(nullable instancetype)initWithCoder : (NSCoder *)coder)
 
   RCTSurfaceMinimumSizeAndMaximumSizeFromSizeAndSizeMeasureMode(
       self.bounds.size, _sizeMeasureMode, &minimumSize, &maximumSize);
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   CGRect windowFrame = [self.window convertRect:self.frame fromView:self.superview];
-#else // [TODO(macOS GH#774)
+#else // [macOS
   CGRect windowFrame = [self.window.contentView convertRect:self.frame toView:self.superview];
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 
   [_surface setMinimumSize:minimumSize maximumSize:maximumSize viewportOffset:windowFrame.origin];
 }
@@ -105,11 +109,11 @@ RCT_NOT_IMPLEMENTED(-(nullable instancetype)initWithCoder : (NSCoder *)coder)
 {
   if (RCTSurfaceStageIsPreparing(_stage)) {
     if (_activityIndicatorView) {
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
       return [_activityIndicatorView sizeThatFits:size];
-#else // [TODO(macOS GH#774)
+#else // [macOS
       return [_activityIndicatorView fittingSize];
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
     }
 
     return CGSizeZero;
@@ -207,7 +211,7 @@ RCT_NOT_IMPLEMENTED(-(nullable instancetype)initWithCoder : (NSCoder *)coder)
 
 #pragma mark - UITraitCollection updates
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
   [super traitCollectionDidChange:previousTraitCollection];
@@ -218,18 +222,18 @@ RCT_NOT_IMPLEMENTED(-(nullable instancetype)initWithCoder : (NSCoder *)coder)
                     RCTUserInterfaceStyleDidChangeNotificationTraitCollectionKey : self.traitCollection,
                   }];
 }
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
 
 #pragma mark - Private stuff
 
 - (void)_invalidateLayout
 {
   [self invalidateIntrinsicContentSize];
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   [self.superview setNeedsLayout];
-#else // [TODO(macOS GH#774)
+#else // [macOS
   [self.superview setNeedsLayout:YES];
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 }
 
 - (void)_updateViews

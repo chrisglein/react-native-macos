@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,7 +8,7 @@
 #import "RCTInputAccessoryContentView.h"
 
 @implementation RCTInputAccessoryContentView {
-  UIView *_safeAreaContainer;
+  RCTUIView *_safeAreaContainer; // [macOS]
   NSLayoutConstraint *_heightConstraint;
 }
 
@@ -17,28 +17,19 @@
   if (self = [super init]) {
     self.autoresizingMask = UIViewAutoresizingFlexibleHeight;
 
-    _safeAreaContainer = [UIView new];
+    _safeAreaContainer = [RCTUIView new]; // [macOS]
     _safeAreaContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:_safeAreaContainer];
 
     _heightConstraint = [_safeAreaContainer.heightAnchor constraintEqualToConstant:0];
     _heightConstraint.active = YES;
 
-    if (@available(iOS 11.0, *)) {
-      [NSLayoutConstraint activateConstraints:@[
-        [_safeAreaContainer.bottomAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.bottomAnchor],
-        [_safeAreaContainer.topAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.topAnchor],
-        [_safeAreaContainer.leadingAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.leadingAnchor],
-        [_safeAreaContainer.trailingAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.trailingAnchor]
-      ]];
-    } else {
-      [NSLayoutConstraint activateConstraints:@[
-        [_safeAreaContainer.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-        [_safeAreaContainer.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [_safeAreaContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [_safeAreaContainer.trailingAnchor constraintEqualToAnchor:self.trailingAnchor]
-      ]];
-    }
+    [NSLayoutConstraint activateConstraints:@[
+      [_safeAreaContainer.bottomAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.bottomAnchor],
+      [_safeAreaContainer.topAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.topAnchor],
+      [_safeAreaContainer.leadingAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.leadingAnchor],
+      [_safeAreaContainer.trailingAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.trailingAnchor]
+    ]];
   }
   return self;
 }
@@ -49,7 +40,7 @@
   return CGSizeZero;
 }
 
-- (void)insertSubview:(UIView *)view atIndex:(NSInteger)index
+- (void)insertSubview:(RCTUIView *)view atIndex:(NSInteger)index // [macOS]
 {
   [_safeAreaContainer insertSubview:view atIndex:index];
 }

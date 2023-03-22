@@ -1,22 +1,19 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-#import <React/RCTUIKit.h> // TODO(macOS GH#774)
+#import <React/RCTUIKit.h> // [macOS]
 
 #import <React/RCTImageLoaderProtocol.h>
 #import <React/RCTImageURLLoaderWithAttribution.h>
-#import <React/RCTImageLoaderInstrumentableProtocol.h>
 
-RCT_EXTERN BOOL RCTImageLoadingInstrumentationEnabled(void);
 RCT_EXTERN BOOL RCTImageLoadingPerfInstrumentationEnabled(void);
-RCT_EXTERN void RCTEnableImageLoadingInstrumentation(BOOL enabled);
 RCT_EXTERN void RCTEnableImageLoadingPerfInstrumentation(BOOL enabled);
 
-@protocol RCTImageLoaderWithAttributionProtocol<RCTImageLoaderProtocol, RCTImageLoaderInstrumentableProtocol>
+@protocol RCTImageLoaderWithAttributionProtocol <RCTImageLoaderProtocol, RCTImageLoaderLoggableProtocol>
 
 // TODO (T61325135): Remove C++ checks
 #ifdef __cplusplus
@@ -29,7 +26,7 @@ RCT_EXTERN void RCTEnableImageLoadingPerfInstrumentation(BOOL enabled);
                                                 scale:(CGFloat)scale
                                               clipped:(BOOL)clipped
                                            resizeMode:(RCTResizeMode)resizeMode
-                                             priority: (RCTImageLoaderPriority)priority
+                                             priority:(RCTImageLoaderPriority)priority
                                           attribution:(const facebook::react::ImageURLLoaderAttribution &)attribution
                                         progressBlock:(RCTImageLoaderProgressBlock)progressBlock
                                      partialLoadBlock:(RCTImageLoaderPartialLoadBlock)partialLoadBlock
@@ -39,7 +36,7 @@ RCT_EXTERN void RCTEnableImageLoadingPerfInstrumentation(BOOL enabled);
 /**
  * Image instrumentation - start tracking the on-screen visibility of the native image view.
  */
-- (void)trackURLImageVisibilityForRequest:(RCTImageURLLoaderRequest *)loaderRequest imageView:(RCTUIView *)imageView; // TODO(macOS GH#774)
+- (void)trackURLImageVisibilityForRequest:(RCTImageURLLoaderRequest *)loaderRequest imageView:(RCTUIView *)imageView; // [macOS]
 
 /**
  * Image instrumentation - notify that the request was cancelled.

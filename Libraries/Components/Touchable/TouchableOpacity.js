@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,17 +8,16 @@
  * @format
  */
 
-'use strict';
+import type {ViewStyleProp} from '../../StyleSheet/StyleSheet';
+import typeof TouchableWithoutFeedback from './TouchableWithoutFeedback';
 
+import Animated from '../../Animated/Animated';
+import Easing from '../../Animated/Easing';
 import Pressability, {
   type PressabilityConfig,
 } from '../../Pressability/Pressability';
 import {PressabilityDebugView} from '../../Pressability/PressabilityDebug';
-import typeof TouchableWithoutFeedback from './TouchableWithoutFeedback';
-import Animated from 'react-native/Libraries/Animated/Animated';
-import Easing from 'react-native/Libraries/Animated/Easing';
-import type {ViewStyleProp} from 'react-native/Libraries/StyleSheet/StyleSheet';
-import flattenStyle from 'react-native/Libraries/StyleSheet/flattenStyle';
+import flattenStyle from '../../StyleSheet/flattenStyle';
 import Platform from '../../Utilities/Platform';
 import * as React from 'react';
 
@@ -38,7 +37,9 @@ type Props = $ReadOnly<{|
   activeOpacity?: ?number,
   style?: ?ViewStyleProp,
 
-  hostRef: React.Ref<typeof Animated.View>,
+  hostRef?: ?React.Ref<typeof Animated.View>,
+
+  // [macOS
   /*
    * Array of keys to receive key down events for
    * For arrow keys, add "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
@@ -50,6 +51,7 @@ type Props = $ReadOnly<{|
    * For arrow keys, add "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
    */
   validKeysUp?: ?Array<string>,
+  // macOS]
 |}>;
 
 type State = $ReadOnly<{|
@@ -150,7 +152,10 @@ class TouchableOpacity extends React.Component<Props, State> {
   _createPressabilityConfig(): PressabilityConfig {
     return {
       cancelable: !this.props.rejectResponderTermination,
-      disabled: this.props.disabled,
+      disabled:
+        this.props.disabled ??
+        this.props['aria-disabled'] ??
+        this.props.accessibilityState?.disabled,
       hitSlop: this.props.hitSlop,
       delayLongPress: this.props.delayLongPress,
       delayPressIn: this.props.delayPressIn,
@@ -237,33 +242,68 @@ class TouchableOpacity extends React.Component<Props, State> {
     const {
       onBlur,
       onFocus,
-      onMouseEnter, // [TODO(macOS/win GH#774)
-      onMouseLeave, // ]TODO(macOS/win GH#774)
+      onMouseEnter, // [macOS]
+      onMouseLeave, // [macOS]
       ...eventHandlersWithoutBlurAndFocus
     } = this.state.pressability.getEventHandlers();
 
+    let _accessibilityState = {
+      busy: this.props['aria-busy'] ?? this.props.accessibilityState?.busy,
+      checked:
+        this.props['aria-checked'] ?? this.props.accessibilityState?.checked,
+      disabled:
+        this.props['aria-disabled'] ?? this.props.accessibilityState?.disabled,
+      expanded:
+        this.props['aria-expanded'] ?? this.props.accessibilityState?.expanded,
+      selected:
+        this.props['aria-selected'] ?? this.props.accessibilityState?.selected,
+    };
+
+    _accessibilityState =
+      this.props.disabled != null
+        ? {
+            ..._accessibilityState,
+            disabled: this.props.disabled,
+          }
+        : _accessibilityState;
+
+    const accessibilityValue = {
+      max: this.props['aria-valuemax'] ?? this.props.accessibilityValue?.max,
+      min: this.props['aria-valuemin'] ?? this.props.accessibilityValue?.min,
+      now: this.props['aria-valuenow'] ?? this.props.accessibilityValue?.now,
+      text: this.props['aria-valuetext'] ?? this.props.accessibilityValue?.text,
+    };
+
+    const accessibilityLiveRegion =
+      this.props['aria-live'] === 'off'
+        ? 'none'
+        : this.props['aria-live'] ?? this.props.accessibilityLiveRegion;
+
+    const accessibilityLabel =
+      this.props['aria-label'] ?? this.props.accessibilityLabel;
     return (
       <Animated.View
         accessible={this.props.accessible !== false}
-        accessibilityLabel={this.props.accessibilityLabel}
+        accessibilityLabel={accessibilityLabel}
         accessibilityHint={this.props.accessibilityHint}
+        accessibilityLanguage={this.props.accessibilityLanguage}
         accessibilityRole={this.props.accessibilityRole}
-        accessibilityState={this.props.accessibilityState}
+        accessibilityState={_accessibilityState}
         accessibilityActions={this.props.accessibilityActions}
         onAccessibilityAction={this.props.onAccessibilityAction}
-        accessibilityValue={this.props.accessibilityValue}
-        importantForAccessibility={this.props.importantForAccessibility}
-        accessibilityLiveRegion={this.props.accessibilityLiveRegion}
-        accessibilityViewIsModal={this.props.accessibilityViewIsModal}
-        accessibilityElementsHidden={this.props.accessibilityElementsHidden}
-        acceptsFirstMouse={
-          this.props.acceptsFirstMouse !== false && !this.props.disabled
-        } // TODO(macOS GH#774)
-        enableFocusRing={
-          (this.props.enableFocusRing === undefined ||
-            this.props.enableFocusRing === true) &&
-          !this.props.disabled
-        } // TODO(macOS GH#774)
+        accessibilityValue={accessibilityValue}
+        importantForAccessibility={
+          this.props['aria-hidden'] === true
+            ? 'no-hide-descendants'
+            : this.props.importantForAccessibility
+        }
+        accessibilityViewIsModal={
+          this.props['aria-modal'] ?? this.props.accessibilityViewIsModal
+        }
+        accessibilityLiveRegion={accessibilityLiveRegion}
+        accessibilityElementsHidden={
+          this.props['aria-hidden'] ?? this.props.accessibilityElementsHidden
+        }
         style={[this.props.style, {opacity: this.state.anim}]}
         nativeID={this.props.nativeID}
         testID={this.props.testID}
@@ -275,35 +315,26 @@ class TouchableOpacity extends React.Component<Props, State> {
         nextFocusUp={this.props.nextFocusUp}
         hasTVPreferredFocus={this.props.hasTVPreferredFocus}
         hitSlop={this.props.hitSlop}
-        // [macOS #656 We need to reconcile between focusable and acceptsKeyboardFocus
-        // (e.g. if one is explicitly disabled, we shouldn't implicitly enable the
-        // other on the underlying view). Prefer passing acceptsKeyboardFocus if
-        // passed explicitly to preserve original behavior, and trigger view warnings.
-        {...(this.props.acceptsKeyboardFocus !== undefined
-          ? {
-              acceptsKeyboardFocus:
-                this.props.acceptsKeyboardFocus === true &&
-                !this.props.disabled,
-            }
-          : {
-              focusable:
-                this.props.focusable !== false &&
-                this.props.onPress !== undefined,
-            })}
-        // macOS]
-        tooltip={this.props.tooltip} // TODO(macOS/win GH#774)
-        onMouseEnter={this.props.onMouseEnter} // [TODO(macOS GH#774)
+        // [macOS
+        acceptsFirstMouse={
+          this.props.acceptsFirstMouse !== false && !this.props.disabled
+        }
+        enableFocusRing={
+          (this.props.enableFocusRing === undefined ||
+            this.props.enableFocusRing === true) &&
+          !this.props.disabled
+        }
+        focusable={this.props.focusable !== false && !this.props.disabled}
+        tooltip={this.props.tooltip}
+        onMouseEnter={this.props.onMouseEnter}
         onMouseLeave={this.props.onMouseLeave}
         onDragEnter={this.props.onDragEnter}
         onDragLeave={this.props.onDragLeave}
         onDrop={this.props.onDrop}
         onFocus={this.props.onFocus}
         onBlur={this.props.onBlur}
-        onKeyDown={this.props.onKeyDown}
-        onKeyUp={this.props.onKeyUp}
-        validKeysDown={this.props.validKeysDown}
-        validKeysUp={this.props.validKeysUp}
-        draggedTypes={this.props.draggedTypes} // ]TODO(macOS GH#774)
+        draggedTypes={this.props.draggedTypes}
+        // macOS]
         ref={this.props.hostRef}
         {...eventHandlersWithoutBlurAndFocus}>
         {this.props.children}
@@ -316,7 +347,12 @@ class TouchableOpacity extends React.Component<Props, State> {
 
   componentDidUpdate(prevProps: Props, prevState: State) {
     this.state.pressability.configure(this._createPressabilityConfig());
-    if (this.props.disabled !== prevProps.disabled) {
+    if (
+      this.props.disabled !== prevProps.disabled ||
+      (flattenStyle(prevProps.style)?.opacity !==
+        flattenStyle(this.props.style)?.opacity) !==
+        undefined
+    ) {
       this._opacityInactive(250);
     }
   }
@@ -326,6 +362,10 @@ class TouchableOpacity extends React.Component<Props, State> {
   }
 }
 
-module.exports = (React.forwardRef((props, hostRef) => (
-  <TouchableOpacity {...props} hostRef={hostRef} />
-)): React.AbstractComponent<$ReadOnly<$Diff<Props, {|hostRef: mixed|}>>>);
+const Touchable = (React.forwardRef((props, ref) => (
+  <TouchableOpacity {...props} hostRef={ref} />
+)): React.AbstractComponent<Props, React.ElementRef<typeof Animated.View>>);
+
+Touchable.displayName = 'TouchableOpacity';
+
+module.exports = Touchable;

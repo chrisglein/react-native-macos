@@ -1,20 +1,16 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-#import <React/RCTUIKit.h> // TODO(macOS GH#774)
+#import <React/RCTUIKit.h> // [macOS]
 
 #import <React/RCTBridgeModule.h>
 #import <React/RCTDefines.h>
 
-typedef NS_ENUM(NSInteger, RCTTestStatus) {
-  RCTTestStatusPending = 0,
-  RCTTestStatusPassed,
-  RCTTestStatusFailed
-};
+typedef NS_ENUM(NSInteger, RCTTestStatus) { RCTTestStatusPending = 0, RCTTestStatusPassed, RCTTestStatusFailed };
 
 @class FBSnapshotTestController;
 
@@ -28,7 +24,7 @@ typedef NS_ENUM(NSInteger, RCTTestStatus) {
 /**
  * This is the view to be snapshotted.
  */
-@property (nonatomic, strong) RCTUIView *view; // TODO(macOS ISS#3536887)
+@property (nonatomic, strong) RCTUIView *view; // [macOS]
 
 /**
  * This is used to give meaningful names to snapshot image files.

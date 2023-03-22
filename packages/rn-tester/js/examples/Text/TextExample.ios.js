@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -11,9 +11,9 @@
 'use strict';
 
 const React = require('react');
-const TextAncestor = require('../../../../../Libraries/Text/TextAncestor');
+const TextAncestor = require('react-native/Libraries/Text/TextAncestor');
 const TextInlineView = require('../../components/TextInlineView');
-const TextLegend = require('../../components/TextLegend');
+import TextLegend from '../../components/TextLegend';
 
 const {
   Button,
@@ -27,6 +27,8 @@ const {
 // TODO: Is there a cleaner way to flip the TextAncestor value to false? I
 //   suspect apps won't even be able to leverage this workaround because
 //   TextAncestor is not public.
+/* $FlowFixMe[missing-local-annot] The type annotation(s) required by Flow's
+ * LTI update could not be added via codemod */
 function InlineView(props) {
   return (
     <TextAncestor.Provider value={false}>
@@ -39,8 +41,11 @@ type TextAlignExampleRTLState = {|
   isRTL: boolean,
 |};
 
-class TextAlignRTLExample extends React.Component<*, TextAlignExampleRTLState> {
-  constructor(...args: Array<*>) {
+class TextAlignRTLExample extends React.Component<
+  {},
+  TextAlignExampleRTLState,
+> {
+  constructor(...args: Array<any>) {
     super(...args);
 
     this.state = {
@@ -48,7 +53,7 @@ class TextAlignRTLExample extends React.Component<*, TextAlignExampleRTLState> {
     };
   }
 
-  render() {
+  render(): React.Node {
     const {isRTL} = this.state;
     const toggleRTL = () => this.setState({isRTL: !isRTL});
     return (
@@ -85,7 +90,7 @@ class TextAlignRTLExample extends React.Component<*, TextAlignExampleRTLState> {
 }
 
 class Entity extends React.Component<$FlowFixMeProps> {
-  render() {
+  render(): React.Node {
     return (
       <Text style={{fontWeight: '500', color: '#527fe4'}}>
         {this.props.children}
@@ -95,7 +100,10 @@ class Entity extends React.Component<$FlowFixMeProps> {
 }
 
 class AttributeToggler extends React.Component<{...}, $FlowFixMeState> {
-  state = {fontWeight: 'bold', fontSize: 15};
+  state: any | {fontSize: number, fontWeight: string} = {
+    fontWeight: 'bold',
+    fontSize: 15,
+  };
 
   toggleWeight = () => {
     this.setState({
@@ -109,19 +117,20 @@ class AttributeToggler extends React.Component<{...}, $FlowFixMeState> {
     });
   };
 
-  render() {
+  render(): React.Node {
     const curStyle = {
       fontWeight: this.state.fontWeight,
       fontSize: this.state.fontSize,
     };
     return (
       <View>
+        {/* $FlowFixMe[incompatible-type] */}
         <Text style={curStyle}>
           Tap the controls below to change attributes.
         </Text>
         <Text>
           <Text>
-            See how it will even work on{' '}
+            See how it will even work on {/* $FlowFixMe[incompatible-type] */}
             <Text style={curStyle}>this nested text</Text>
           </Text>
         </Text>
@@ -151,7 +160,7 @@ class AdjustingFontSize extends React.Component<
   AdjustingFontSizeProps,
   AdjustingFontSizeState,
 > {
-  state = {
+  state: AdjustingFontSizeState = {
     dynamicText: '',
     shouldRender: true,
   };
@@ -187,7 +196,7 @@ class AdjustingFontSize extends React.Component<
     });
   };
 
-  render() {
+  render(): React.Node {
     if (!this.state.shouldRender) {
       return <View />;
     }
@@ -264,8 +273,8 @@ class AdjustingFontSize extends React.Component<
   }
 }
 
-class TextBaseLineLayoutExample extends React.Component<*, *> {
-  render() {
+class TextBaseLineLayoutExample extends React.Component<{}, mixed> {
+  render(): React.Node {
     const texts = [];
     for (let i = 9; i >= 0; i--) {
       texts.push(
@@ -355,8 +364,39 @@ class TextBaseLineLayoutExample extends React.Component<*, *> {
   }
 }
 
-class TextRenderInfoExample extends React.Component<*, *> {
-  state = {
+class TextRenderInfoExample extends React.Component<
+  {},
+  {
+    fontSize: number,
+    numberOfTextBlocks: number,
+    textMetrics: $ReadOnly<{
+      ascender: number,
+      capHeight: number,
+      descender: number,
+      height: number,
+      text?: string,
+      width: number,
+      x: number,
+      xHeight: number,
+      y: number,
+    }>,
+  },
+> {
+  state: {
+    fontSize: number,
+    numberOfTextBlocks: number,
+    textMetrics: $ReadOnly<{
+      ascender: number,
+      capHeight: number,
+      descender: number,
+      height: number,
+      text?: string,
+      width: number,
+      x: number,
+      xHeight: number,
+      y: number,
+    }>,
+  } = {
     textMetrics: {
       x: 0,
       y: 0,
@@ -371,7 +411,7 @@ class TextRenderInfoExample extends React.Component<*, *> {
     fontSize: 14,
   };
 
-  render() {
+  render(): React.Node {
     const topOfBox =
       this.state.textMetrics.y +
       this.state.textMetrics.height -
@@ -439,8 +479,35 @@ class TextRenderInfoExample extends React.Component<*, *> {
   }
 }
 
-class TextWithCapBaseBox extends React.Component<*, *> {
-  state = {
+class TextWithCapBaseBox extends React.Component<
+  {children: string, style?: any},
+  {
+    textMetrics: $ReadOnly<{
+      ascender: number,
+      capHeight: number,
+      descender: number,
+      height: number,
+      text?: string,
+      width: number,
+      x: number,
+      xHeight: number,
+      y: number,
+    }>,
+  },
+> {
+  state: {
+    textMetrics: $ReadOnly<{
+      ascender: number,
+      capHeight: number,
+      descender: number,
+      height: number,
+      text?: string,
+      width: number,
+      x: number,
+      xHeight: number,
+      y: number,
+    }>,
+  } = {
     textMetrics: {
       x: 0,
       y: 0,
@@ -452,7 +519,7 @@ class TextWithCapBaseBox extends React.Component<*, *> {
       xHeight: 0,
     },
   };
-  render() {
+  render(): React.Node {
     return (
       <Text
         onTextLayout={event => {
@@ -485,46 +552,9 @@ exports.category = 'Basic';
 exports.description = 'Base component for rendering styled text.';
 exports.displayName = 'TextExample';
 exports.examples = [
-  // [TODO(OSS Candidate ISS#2710739)
-  {
-    title: 'Apple Font Smoothing',
-    render: function(): React.Node {
-      return (
-        <View>
-          <Text>
-            <Text style={{fontWeight: 'bold'}}>auto: </Text>
-            <Text style={{apple_fontSmoothing: 'auto'}}>
-              This will render using the global [RCTTextAttributes
-              fontSmoothingDefault] setting. The default is the same as
-              subpixel-antialiased if not explicitly set by the native app.
-            </Text>
-          </Text>
-          <Text>
-            <Text style={{fontWeight: 'bold'}}>none: </Text>
-            <Text style={{apple_fontSmoothing: 'none'}}>
-              This will render with no antialiasing.
-            </Text>
-          </Text>
-          <Text>
-            <Text style={{fontWeight: 'bold'}}>antialiased: </Text>
-            <Text style={{apple_fontSmoothing: 'antialiased'}}>
-              This will render with antialiasing.
-            </Text>
-          </Text>
-          <Text>
-            <Text style={{fontWeight: 'bold'}}>subpixel-antialiased: </Text>
-            <Text style={{apple_fontSmoothing: 'subpixel-antialiased'}}>
-              This will render with subpixel antialiasing.
-            </Text>
-          </Text>
-        </View>
-      );
-    },
-  },
-  // ]TODO(OSS Candidate ISS#2710739)
   {
     title: 'Wrap',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <Text>
           The text should wrap if it goes on multiple lines. See, this is going
@@ -535,13 +565,13 @@ exports.examples = [
   },
   {
     title: "Substring Emoji (should only see 'test')",
-    render: function(): React.Node {
+    render: function (): React.Node {
       return <Text>{'test🙃'.substring(0, 5)}</Text>;
     },
   },
   {
     title: 'Transparent Background Color',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <Text style={{backgroundColor: '#00000020', padding: 10}}>
           Text in a gray box!
@@ -554,7 +584,7 @@ exports.examples = [
   },
   {
     title: 'Text metrics',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return <TextRenderInfoExample />;
     },
   },
@@ -572,7 +602,7 @@ exports.examples = [
   },
   {
     title: 'Padding',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <Text style={{padding: 10}}>
           This text is indented by 10px padding on all sides.
@@ -582,7 +612,7 @@ exports.examples = [
   },
   {
     title: 'Font Family',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text style={{fontFamily: Platform.isTV ? 'Times' : 'Cochin'}}>
@@ -615,7 +645,7 @@ exports.examples = [
   },
   {
     title: 'Font Size',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text style={{fontSize: 23}}>Size 23</Text>
@@ -626,7 +656,7 @@ exports.examples = [
   },
   {
     title: 'Color',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text style={{color: 'red'}}>Red color</Text>
@@ -637,31 +667,36 @@ exports.examples = [
   },
   {
     title: 'Font Weight',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
-          <Text style={{fontSize: 20, fontWeight: '100'}}>
-            Move fast and be ultralight
-          </Text>
-          <Text style={{fontSize: 20, fontWeight: '200'}}>
-            Move fast and be light
-          </Text>
-          <Text style={{fontSize: 20, fontWeight: 'normal'}}>
-            Move fast and be normal
-          </Text>
-          <Text style={{fontSize: 20, fontWeight: 'bold'}}>
-            Move fast and be bold
-          </Text>
-          <Text style={{fontSize: 20, fontWeight: '900'}}>
-            Move fast and be ultrabold
-          </Text>
+          <Text style={{fontWeight: 'bold'}}>Move fast and be bold</Text>
+          <Text style={{fontWeight: 'normal'}}>Move fast and be normal</Text>
+          <Text style={{fontWeight: '900'}}>FONT WEIGHT 900</Text>
+          <Text style={{fontWeight: '800'}}>FONT WEIGHT 800</Text>
+          <Text style={{fontWeight: '700'}}>FONT WEIGHT 700</Text>
+          <Text style={{fontWeight: '600'}}>FONT WEIGHT 600</Text>
+          <Text style={{fontWeight: '500'}}>FONT WEIGHT 500</Text>
+          <Text style={{fontWeight: '400'}}>FONT WEIGHT 400</Text>
+          <Text style={{fontWeight: '300'}}>FONT WEIGHT 300</Text>
+          <Text style={{fontWeight: '200'}}>FONT WEIGHT 200</Text>
+          <Text style={{fontWeight: '100'}}>FONT WEIGHT 100</Text>
+          <Text style={{fontWeight: 900}}>FONT WEIGHT 900</Text>
+          <Text style={{fontWeight: 800}}>FONT WEIGHT 800</Text>
+          <Text style={{fontWeight: 700}}>FONT WEIGHT 700</Text>
+          <Text style={{fontWeight: 600}}>FONT WEIGHT 600</Text>
+          <Text style={{fontWeight: 500}}>FONT WEIGHT 500</Text>
+          <Text style={{fontWeight: 400}}>FONT WEIGHT 400</Text>
+          <Text style={{fontWeight: 300}}>FONT WEIGHT 300</Text>
+          <Text style={{fontWeight: 200}}>FONT WEIGHT 200</Text>
+          <Text style={{fontWeight: 100}}>FONT WEIGHT 100</Text>
         </View>
       );
     },
   },
   {
     title: 'Font Style',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text style={{fontStyle: 'normal'}}>Normal text</Text>
@@ -672,7 +707,7 @@ exports.examples = [
   },
   {
     title: 'Selectable',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text selectable={true}>
@@ -683,9 +718,49 @@ exports.examples = [
       );
     },
   },
+  // [macOS
+  {
+    title: 'Focusable',
+    render: function (): React.Node {
+      return (
+        <View>
+          <Text focusable={true}>
+            This text is
+            <Text style={{fontWeight: 'bold'}}> not selectable</Text> yet
+            <Text style={{fontWeight: 'bold'}}> focusable</Text> with a visible
+            focus ring
+          </Text>
+          <Text selectable={true} focusable={true} style={{marginTop: 5}}>
+            This text is <Text style={{fontWeight: 'bold'}}>selectable</Text>{' '}
+            and
+            <Text style={{fontWeight: 'bold'}}> focusable</Text> with a visible
+            focus ring
+          </Text>
+          <Text
+            selectable={true}
+            focusable={true}
+            enableFocusRing={false}
+            style={{marginTop: 5}}>
+            This text is <Text style={{fontWeight: 'bold'}}>selectable</Text>{' '}
+            and <Text style={{fontWeight: 'bold'}}>focusable</Text> without a
+            visible focus ring (CMD-C to copy contents)
+          </Text>
+          <Text selectable={true} focusable={false} style={{marginTop: 5}}>
+            This text is <Text style={{fontWeight: 'bold'}}>selectable</Text>{' '}
+            and not focusable
+          </Text>
+          <TextInput
+            placeholder="Empty TextInput for debugging focused text views"
+            style={{marginTop: 5}}
+          />
+        </View>
+      );
+    },
+  },
+  // [macOS
   {
     title: 'Text Decoration',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text
@@ -763,7 +838,7 @@ exports.examples = [
     description: ('Nested text components will inherit the styles of their ' +
       'parents (only backgroundColor is inherited from non-Text parents).  ' +
       '<Text> only supports other <Text> and raw text (strings) as children.': string),
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text>
@@ -801,7 +876,7 @@ exports.examples = [
   },
   {
     title: 'Text Align',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text>auto (default) - english LTR</Text>
@@ -833,7 +908,7 @@ exports.examples = [
   },
   {
     title: 'Letter Spacing',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text style={{letterSpacing: 0}}>letterSpacing = 0</Text>
@@ -877,7 +952,7 @@ exports.examples = [
   },
   {
     title: 'Spaces',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <Text>
           A {'generated'} {'string'} and some &nbsp;&nbsp;&nbsp; spaces
@@ -887,7 +962,7 @@ exports.examples = [
   },
   {
     title: 'Line Height',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <Text>
           <Text style={{lineHeight: 35}}>
@@ -901,20 +976,20 @@ exports.examples = [
   {
     title: 'Empty Text',
     description: "It's ok to have Text with zero or null children.",
-    render: function(): React.Node {
+    render: function (): React.Node {
       return <Text />;
     },
   },
   {
     title: 'Toggling Attributes',
-    render: function(): React.Element<any> {
+    render: function (): React.Element<any> {
       return <AttributeToggler />;
     },
   },
   {
     title: 'backgroundColor attribute',
     description: 'backgroundColor is inherited from all types of views.',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <Text style={{backgroundColor: 'yellow'}}>
           Yellow container background,
@@ -940,7 +1015,7 @@ exports.examples = [
   },
   {
     title: 'numberOfLines attribute',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text numberOfLines={1}>
@@ -960,34 +1035,8 @@ exports.examples = [
     },
   },
   {
-    title: 'Text highlighting (tap the link to see highlight)',
-    render: function(): React.Node {
-      return (
-        <View>
-          <Text>
-            Lorem ipsum dolor sit amet,{' '}
-            <Text
-              suppressHighlighting={false}
-              style={{
-                backgroundColor: 'white',
-                textDecorationLine: 'underline',
-                color: 'blue',
-              }}
-              onPress={() => null}>
-              consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
-              labore et dolore magna aliqua. Ut enim ad minim veniam, quis
-              nostrud
-            </Text>{' '}
-            exercitation ullamco laboris nisi ut aliquip ex ea commodo
-            consequat.
-          </Text>
-        </View>
-      );
-    },
-  },
-  {
     title: 'allowFontScaling attribute',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text>
@@ -1035,7 +1084,7 @@ exports.examples = [
   },
   {
     title: 'Text shadow',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text
@@ -1053,7 +1102,7 @@ exports.examples = [
   },
   {
     title: 'Ellipsize mode',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text numberOfLines={1}>
@@ -1074,7 +1123,7 @@ exports.examples = [
   },
   {
     title: 'Font variants',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text style={{fontVariant: ['small-caps']}}>Small Caps{'\n'}</Text>
@@ -1108,7 +1157,7 @@ exports.examples = [
   },
   {
     title: 'Nested content',
-    render: function(): React.Node {
+    render: function (): React.Node {
       // iOS-only because it relies on inline views being able to size to content.
       // Android's implementation requires that a width and height be specified
       // on the inline view.
@@ -1136,25 +1185,25 @@ exports.examples = [
   },
   {
     title: 'Dynamic Font Size Adjustment',
-    render: function(): React.Element<any> {
+    render: function (): React.Element<any> {
       return <AdjustingFontSize />;
     },
   },
   {
     title: 'Text Align with RTL',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return <TextAlignRTLExample />;
     },
   },
   {
     title: "Text `alignItems: 'baseline'` style",
-    render: function(): React.Node {
+    render: function (): React.Node {
       return <TextBaseLineLayoutExample />;
     },
   },
   {
     title: 'Transform',
-    render: function(): React.Node {
+    render: function (): React.Node {
       return (
         <View>
           <Text style={{textTransform: 'uppercase'}}>
@@ -1165,6 +1214,18 @@ exports.examples = [
           </Text>
           <Text style={{textTransform: 'capitalize'}}>
             This text should be CAPITALIZED.
+          </Text>
+          <Text>
+            Capitalize a date:
+            <Text style={{textTransform: 'capitalize'}}>
+              the 9th of november, 1998
+            </Text>
+          </Text>
+          <Text>
+            Capitalize a 2 digit date:
+            <Text style={{textTransform: 'capitalize'}}>
+              the 25th of december
+            </Text>
           </Text>
           <Text style={{textTransform: 'capitalize'}}>
             Mixed: <Text style={{textTransform: 'uppercase'}}>uppercase </Text>
@@ -1189,4 +1250,138 @@ exports.examples = [
       );
     },
   },
+  {
+    title: 'Selectable Text',
+    render: function (): React.Node {
+      return (
+        <View>
+          <Text style={{userSelect: 'auto'}}>Text element is selectable</Text>
+        </View>
+      );
+    },
+  },
+  {
+    title: 'Line Break Strategy',
+    render: function (): React.Node {
+      const lineBreakStrategy = ['none', 'standard', 'hangul-word', 'push-out'];
+      const textByCode = {
+        en: 'lineBreakStrategy lineBreakStrategy lineBreakStrategy lineBreakStrategy',
+        ko: '한글개행 한글개행 한글개행 한글개행 한글개행 한글개행 한글개행 한글개행',
+        ja: 'かいぎょう かいぎょう かいぎょう かいぎょう かいぎょう かいぎょう',
+        cn: '改行 改行 改行 改行 改行 改行 改行 改行 改行 改行 改行 改行',
+      };
+
+      return (
+        <View>
+          {lineBreakStrategy.map(strategy => {
+            return (
+              <View key={strategy} style={{marginBottom: 12}}>
+                <Text
+                  style={{
+                    backgroundColor: 'lightgrey',
+                  }}>{`Strategy: ${strategy}`}</Text>
+                {Object.keys(textByCode).map(code => {
+                  return (
+                    <View key={code}>
+                      <Text style={{fontWeight: 'bold'}}>{`[${code}]`}</Text>
+                      <Text lineBreakStrategyIOS={strategy}>
+                        {textByCode[code]}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })}
+        </View>
+      );
+    },
+  },
+  // [macOS
+  {
+    title: 'Text components inheriting color from parent',
+    render: function (): React.Node {
+      return (
+        <View style={{marginTop: 10, marginBottom: 10}}>
+          <Text style={{color: 'red'}}>
+            Outer&nbsp;
+            <Text>Inner</Text>
+          </Text>
+        </View>
+      );
+    },
+  },
+  {
+    title: 'Dynamic Text sizing (iOS only)',
+    render: function (): React.Node {
+      const boldStyle = {fontWeight: 'bold'};
+      const boxStyle = {
+        borderWidth: 1,
+        padding: 8,
+        margin: 8,
+      };
+      return (
+        <View style={{marginTop: 10, marginBottom: 10}}>
+          <Text>
+            Adjust text size in Accessibility settings and watch how the font
+            sizes change relative to each other.
+          </Text>
+          <View style={boxStyle}>
+            <Text style={boldStyle}>With `dynamicTypeRamp`:</Text>
+            <Text style={{fontSize: 34}} dynamicTypeRamp="largeTitle">
+              Large Title
+            </Text>
+            <Text style={{fontSize: 28}} dynamicTypeRamp="title1">
+              Title
+            </Text>
+            <Text style={{fontSize: 22}} dynamicTypeRamp="title2">
+              Title 2
+            </Text>
+            <Text style={{fontSize: 20}} dynamicTypeRamp="title3">
+              Title 3
+            </Text>
+            <Text style={{fontSize: 17}} dynamicTypeRamp="body">
+              Body
+            </Text>
+          </View>
+          <View style={boxStyle}>
+            <Text style={boldStyle}>Without `dynamicTypeRamp`:</Text>
+            <Text style={{fontSize: 34}}>Large Title</Text>
+            <Text style={{fontSize: 28}}>Title</Text>
+            <Text style={{fontSize: 22}}>Title 2</Text>
+            <Text style={{fontSize: 20}}>Title 3</Text>
+            <Text style={{fontSize: 17}}>Body</Text>
+          </View>
+        </View>
+      );
+    },
+  },
+  {
+    title: 'Cursor',
+    render: function (): React.Node {
+      return (
+        <View>
+          <Text style={{cursor: 'pointer'}} selectable={true}>
+            This text has pointer cursor.
+          </Text>
+        </View>
+      );
+    },
+  },
+  {
+    title: 'Cursor nested (virtual) text',
+    render: function (): React.Node {
+      return (
+        <View>
+          <Text selectable={true}>
+            This text has regular cursor.{' '}
+            <Text style={{cursor: 'pointer'}}>
+              This text has pointer cursor.
+            </Text>
+          </Text>
+        </View>
+      );
+    },
+  },
+  // [macOS]
 ];

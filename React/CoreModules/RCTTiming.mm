@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -118,11 +118,9 @@ RCT_EXPORT_MODULE()
   return self;
 }
 
-- (void)setBridge:(RCTBridge *)bridge
+- (void)initialize
 {
-  RCTAssert(!_bridge, @"Should never be initialized twice!");
   [self setup];
-  _bridge = bridge;
 }
 
 - (void)setup
@@ -131,7 +129,7 @@ RCT_EXPORT_MODULE()
   _timers = [NSMutableDictionary new];
   _inBackground = NO;
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
   for (NSString *name in @[
          UIApplicationWillResignActiveNotification,
          UIApplicationDidEnterBackgroundNotification,
@@ -149,7 +147,7 @@ RCT_EXPORT_MODULE()
                                                  name:name
                                                object:nil];
   }
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
 }
 
 - (void)dealloc

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,12 +7,25 @@
 
 #import "RCTEnhancedScrollView.h"
 #import <React/RCTUtils.h>
+#import <React/RCTScrollableProtocol.h>
+#import <React/RCTAutoInsetsProtocol.h>
 
-@interface RCTEnhancedScrollView () <UIScrollViewDelegate>
+@interface RCTEnhancedScrollView () <
+#if !TARGET_OS_OSX // [macOS]
+    UIScrollViewDelegate
+#else // [macOS
+    RCTScrollableProtocol, RCTAutoInsetsProtocol
+#endif // macOS]
+>
 @end
 
 @implementation RCTEnhancedScrollView {
+#if !TARGET_OS_OSX // [macOS]
   __weak id<UIScrollViewDelegate> _publicDelegate;
+#else// [macOS
+  __weak id<RCTScrollableProtocol, RCTAutoInsetsProtocol> _publicDelegate;
+#endif // macOS]
+  BOOL _isSetContentOffsetDisabled;
 }
 
 + (BOOL)automaticallyNotifiesObserversForKey:(NSString *)key
@@ -29,21 +42,37 @@
 - (instancetype)initWithFrame:(CGRect)frame
 {
   if (self = [super initWithFrame:frame]) {
-    if (@available(iOS 11.0, *)) {
-      // We set the default behavior to "never" so that iOS
-      // doesn't do weird things to UIScrollView insets automatically
-      // and keeps it as an opt-in behavior.
-      self.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
-    }
+#if !TARGET_OS_OSX // [macOS]
+    // We set the default behavior to "never" so that iOS
+    // doesn't do weird things to UIScrollView insets automatically
+    // and keeps it as an opt-in behavior.
+    self.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+
+    // We intentionally force `UIScrollView`s `semanticContentAttribute` to `LTR` here
+    // because this attribute affects a position of vertical scrollbar; we don't want this
+    // scrollbar flip because we also flip it with whole `UIScrollView` flip.
+    self.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
 
     __weak __typeof(self) weakSelf = self;
     _delegateSplitter = [[RCTGenericDelegateSplitter alloc] initWithDelegateUpdateBlock:^(id delegate) {
       [weakSelf setPrivateDelegate:delegate];
     }];
     [_delegateSplitter addDelegate:self];
+#endif // [macOS]
   }
 
   return self;
+}
+
+- (void)preserveContentOffsetWithBlock:(void (^)())block
+{
+  if (!block) {
+    return;
+  }
+
+  _isSetContentOffsetDisabled = YES;
+  block();
+  _isSetContentOffsetDisabled = NO;
 }
 
 /*
@@ -54,6 +83,10 @@
  */
 - (void)setContentOffset:(CGPoint)contentOffset
 {
+  if (_isSetContentOffsetDisabled) {
+    return;
+  }
+
   if (_centerContent && !CGSizeEqualToSize(self.contentSize, CGSizeZero)) {
     CGSize scrollViewSize = self.bounds.size;
     if (self.contentSize.width <= scrollViewSize.width) {
@@ -67,6 +100,16 @@
   super.contentOffset = CGPointMake(
       RCTSanitizeNaNValue(contentOffset.x, @"scrollView.contentOffset.x"),
       RCTSanitizeNaNValue(contentOffset.y, @"scrollView.contentOffset.y"));
+}
+
+#if !TARGET_OS_OSX // [macOS]
+- (BOOL)touchesShouldCancelInContentView:(RCTUIView *)view // [macOS]
+{
+  if ([_overridingDelegate respondsToSelector:@selector(touchesShouldCancelInContentView:)]) {
+    return [_overridingDelegate touchesShouldCancelInContentView:view];
+  }
+
+  return [super touchesShouldCancelInContentView:view];
 }
 
 #pragma mark - RCTGenericDelegateSplitter
@@ -100,11 +143,13 @@
   }
 }
 
+#endif // [macOS]
+
 #pragma mark - UIScrollViewDelegate
 
-- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView
+- (void)scrollViewWillEndDragging:(RCTUIScrollView *)scrollView
                      withVelocity:(CGPoint)velocity
-              targetContentOffset:(inout CGPoint *)targetContentOffset
+              targetContentOffset:(inout CGPoint *)targetContentOffset // [macOS]
 {
   if (self.snapToOffsets && self.snapToOffsets.count > 0) {
     // An alternative to enablePaging and snapToInterval which allows setting custom
@@ -215,10 +260,10 @@
     // Pick snap point based on direction and proximity
     CGFloat fractionalIndex = (targetContentOffsetAlongAxis + alignmentOffset) / snapToIntervalF;
 
-    NSInteger snapIndex = velocityAlongAxis > 0.0
-        ? ceil(fractionalIndex)
-        : velocityAlongAxis < 0.0 ? floor(fractionalIndex) : round(fractionalIndex);
-    CGFloat newTargetContentOffset = (snapIndex * snapToIntervalF) - alignmentOffset;
+    NSInteger snapIndex = velocityAlongAxis > 0.0 ? ceil(fractionalIndex)
+        : velocityAlongAxis < 0.0                 ? floor(fractionalIndex)
+                                                  : round(fractionalIndex);
+    CGFloat newTargetContentOffset = ((CGFloat)snapIndex * snapToIntervalF) - alignmentOffset;
 
     // Set new targetContentOffset
     if (isHorizontal) {
@@ -231,7 +276,7 @@
 
 #pragma mark -
 
-- (BOOL)isHorizontal:(UIScrollView *)scrollView
+- (BOOL)isHorizontal:(RCTUIScrollView *)scrollView // [macOS]
 {
   return scrollView.contentSize.width > self.frame.size.width;
 }

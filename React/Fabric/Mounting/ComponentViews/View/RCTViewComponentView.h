@@ -1,11 +1,11 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-#import <UIKit/UIKit.h>
+#import <React/RCTUIKit.h> // [macOS]
 
 #import <React/RCTComponentViewProtocol.h>
 #import <React/RCTConstants.h>
@@ -22,12 +22,12 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * UIView class for <View> component.
  */
-@interface RCTViewComponentView : UIView <RCTComponentViewProtocol, RCTTouchableComponentViewProtocol> {
+@interface RCTViewComponentView : RCTUIView <RCTComponentViewProtocol, RCTTouchableComponentViewProtocol> {
  @protected
   facebook::react::LayoutMetrics _layoutMetrics;
   facebook::react::SharedViewProps _props;
   facebook::react::SharedViewEventEmitter _eventEmitter;
-}
+} // [macOS]
 
 /**
  * Represents the `UIView` instance that is being automatically attached to
@@ -37,7 +37,7 @@ NS_ASSUME_NONNULL_BEGIN
  * to embed/bridge pure native views as component views.
  * Defaults to `nil`. Assign `nil` to remove view as subview.
  */
-@property (nonatomic, strong, nullable) UIView *contentView;
+@property (nonatomic, strong, nullable) RCTPlatformView *contentView; // [macOS]
 
 /**
  * Provides access to `nativeId` prop of the component.
@@ -52,7 +52,7 @@ NS_ASSUME_NONNULL_BEGIN
  * Provides access to `foregroundColor` prop of the component.
  * Must be used by subclasses only.
  */
-@property (nonatomic, strong, nullable) UIColor *foregroundColor;
+@property (nonatomic, strong, nullable) RCTUIColor *foregroundColor; // [macOS]
 
 /**
  * Returns the object - usually (sub)view - which represents this
@@ -68,6 +68,12 @@ NS_ASSUME_NONNULL_BEGIN
  * Insets used when hit testing inside this view.
  */
 @property (nonatomic, assign) UIEdgeInsets hitTestEdgeInsets;
+
+/**
+ * Flag indicating if subview clipping is enabled for the view.
+ * If subview clipping is enabled, subviews that are outside of the viewport may be removed from the view hierachy.
+ */
+@property (nonatomic, readonly) BOOL removeClippedSubviews;
 
 /**
  * Enforcing `call super` semantic for overridden methods from `RCTComponentViewProtocol`.

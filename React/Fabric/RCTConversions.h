@@ -1,11 +1,11 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-#import <UIKit/UIKit.h>
+#import <React/RCTUIKit.h> // [macOS]
 
 #import <react/renderer/components/view/AccessibilityPrimitives.h>
 #import <react/renderer/components/view/primitives.h>
@@ -35,26 +35,26 @@ inline std::string RCTStringFromNSString(NSString *string)
   return std::string{string.UTF8String ?: ""};
 }
 
-inline UIColor *_Nullable RCTUIColorFromSharedColor(facebook::react::SharedColor const &sharedColor)
+inline RCTUIColor *_Nullable RCTUIColorFromSharedColor(facebook::react::SharedColor const &sharedColor) // [macOS]
 {
   if (!sharedColor) {
     return nil;
   }
 
   if (*facebook::react::clearColor() == *sharedColor) {
-    return [UIColor clearColor];
+    return [RCTUIColor clearColor]; // [macOS]
   }
 
   if (*facebook::react::blackColor() == *sharedColor) {
-    return [UIColor blackColor];
+    return [RCTUIColor blackColor]; // [macOS]
   }
 
   if (*facebook::react::whiteColor() == *sharedColor) {
-    return [UIColor whiteColor];
+    return [RCTUIColor whiteColor]; // [macOS]
   }
 
   auto components = facebook::react::colorComponentsFromColor(sharedColor);
-  return [UIColor colorWithRed:components.red green:components.green blue:components.blue alpha:components.alpha];
+  return [RCTUIColor colorWithRed:components.red green:components.green blue:components.blue alpha:components.alpha]; // [macOS]
 }
 
 inline CF_RETURNS_RETAINED CGColorRef
@@ -83,6 +83,7 @@ inline UIEdgeInsets RCTUIEdgeInsetsFromEdgeInsets(const facebook::react::EdgeIns
   return {edgeInsets.top, edgeInsets.left, edgeInsets.bottom, edgeInsets.right};
 }
 
+#if !TARGET_OS_OSX // [macOS]
 UIAccessibilityTraits const AccessibilityTraitSwitch = 0x20000000000001;
 
 inline UIAccessibilityTraits RCTUIAccessibilityTraitsFromAccessibilityTraits(
@@ -141,27 +142,32 @@ inline UIAccessibilityTraits RCTUIAccessibilityTraitsFromAccessibilityTraits(
   if ((accessibilityTraits & AccessibilityTraits::Switch) != AccessibilityTraits::None) {
     result |= AccessibilityTraitSwitch;
   }
+  if ((accessibilityTraits & AccessibilityTraits::TabBar) != AccessibilityTraits::None) {
+    result |= UIAccessibilityTraitTabBar;
+  }
   return result;
 };
+#endif // [macOS]
 
 inline CATransform3D RCTCATransform3DFromTransformMatrix(const facebook::react::Transform &transformMatrix)
 {
-  return {(CGFloat)transformMatrix.matrix[0],
-          (CGFloat)transformMatrix.matrix[1],
-          (CGFloat)transformMatrix.matrix[2],
-          (CGFloat)transformMatrix.matrix[3],
-          (CGFloat)transformMatrix.matrix[4],
-          (CGFloat)transformMatrix.matrix[5],
-          (CGFloat)transformMatrix.matrix[6],
-          (CGFloat)transformMatrix.matrix[7],
-          (CGFloat)transformMatrix.matrix[8],
-          (CGFloat)transformMatrix.matrix[9],
-          (CGFloat)transformMatrix.matrix[10],
-          (CGFloat)transformMatrix.matrix[11],
-          (CGFloat)transformMatrix.matrix[12],
-          (CGFloat)transformMatrix.matrix[13],
-          (CGFloat)transformMatrix.matrix[14],
-          (CGFloat)transformMatrix.matrix[15]};
+  return {
+      (CGFloat)transformMatrix.matrix[0],
+      (CGFloat)transformMatrix.matrix[1],
+      (CGFloat)transformMatrix.matrix[2],
+      (CGFloat)transformMatrix.matrix[3],
+      (CGFloat)transformMatrix.matrix[4],
+      (CGFloat)transformMatrix.matrix[5],
+      (CGFloat)transformMatrix.matrix[6],
+      (CGFloat)transformMatrix.matrix[7],
+      (CGFloat)transformMatrix.matrix[8],
+      (CGFloat)transformMatrix.matrix[9],
+      (CGFloat)transformMatrix.matrix[10],
+      (CGFloat)transformMatrix.matrix[11],
+      (CGFloat)transformMatrix.matrix[12],
+      (CGFloat)transformMatrix.matrix[13],
+      (CGFloat)transformMatrix.matrix[14],
+      (CGFloat)transformMatrix.matrix[15]};
 }
 
 inline facebook::react::Point RCTPointFromCGPoint(const CGPoint &point)
@@ -169,9 +175,17 @@ inline facebook::react::Point RCTPointFromCGPoint(const CGPoint &point)
   return {point.x, point.y};
 }
 
+inline facebook::react::Float RCTFloatFromCGFloat(CGFloat value)
+{
+  if (value == CGFLOAT_MAX) {
+    return std::numeric_limits<facebook::react::Float>::infinity();
+  }
+  return value;
+}
+
 inline facebook::react::Size RCTSizeFromCGSize(const CGSize &size)
 {
-  return {size.width, size.height};
+  return {RCTFloatFromCGFloat(size.width), RCTFloatFromCGFloat(size.height)};
 }
 
 inline facebook::react::Rect RCTRectFromCGRect(const CGRect &rect)

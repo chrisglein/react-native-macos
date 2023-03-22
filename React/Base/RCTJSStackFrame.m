@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -136,6 +136,7 @@ static NSRegularExpression *RCTJSStackFrameRegex()
   return stack;
 }
 
+#if DEBUG // [macOS description is a debug-only feature
 - (NSString *)description
 {
   return [NSString stringWithFormat:@"<%@: %p method name: %@; file name: %@; line: %ld; column: %ld>",
@@ -146,5 +147,6 @@ static NSRegularExpression *RCTJSStackFrameRegex()
                                     (long)self.lineNumber,
                                     (long)self.column];
 }
+#endif // macOS]
 
 @end

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,24 +8,22 @@
  * @format
  */
 
-'use strict';
-
-import * as React from 'react';
-
+import type {HostComponent} from '../../Renderer/shims/ReactNativeTypes';
+import type {ColorValue} from '../../StyleSheet/StyleSheet';
 import type {
-  WithDefault,
   BubblingEventHandler,
-} from 'react-native/Libraries/Types/CodegenTypes';
-
-import codegenNativeCommands from 'react-native/Libraries/Utilities/codegenNativeCommands';
-import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
-import type {HostComponent} from 'react-native/Libraries/Renderer/shims/ReactNativeTypes';
-
-import type {ProcessedColorValue} from '../../StyleSheet/processColor'; // TODO(macOS GH#774)
+  Int32,
+  WithDefault,
+} from '../../Types/CodegenTypes';
 import type {ViewProps} from '../View/ViewPropTypes';
+
+import codegenNativeCommands from '../../Utilities/codegenNativeCommands';
+import codegenNativeComponent from '../../Utilities/codegenNativeComponent';
+import * as React from 'react';
 
 type SwitchChangeEvent = $ReadOnly<{|
   value: boolean,
+  target: Int32,
 |}>;
 
 type NativeProps = $ReadOnly<{|
@@ -34,13 +32,13 @@ type NativeProps = $ReadOnly<{|
   // Props
   disabled?: WithDefault<boolean, false>,
   enabled?: WithDefault<boolean, true>,
-  thumbColor?: ?(string | ProcessedColorValue), // TODO(macOS GH#774)
-  trackColorForFalse?: ?(string | ProcessedColorValue), // TODO(macOS GH#774)
-  trackColorForTrue?: ?(string | ProcessedColorValue), // TODO(macOS GH#774)
+  thumbColor?: ?ColorValue,
+  trackColorForFalse?: ?ColorValue,
+  trackColorForTrue?: ?ColorValue,
   value?: WithDefault<boolean, false>,
   on?: WithDefault<boolean, false>,
-  thumbTintColor?: ?(string | ProcessedColorValue), // TODO(macOS GH#774)
-  trackTintColor?: ?(string | ProcessedColorValue), // TODO(macOS GH#774)
+  thumbTintColor?: ?ColorValue,
+  trackTintColor?: ?ColorValue,
 
   // Events
   onChange?: BubblingEventHandler<SwitchChangeEvent>,

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -22,6 +22,7 @@ const {
   Text,
   TextInput,
   View,
+  PlatformColor, // [macOS]
 } = require('react-native');
 
 export type Item = {
@@ -57,13 +58,17 @@ class ItemComponent extends React.PureComponent<{
   onPress: (key: string) => void,
   onShowUnderlay?: () => void,
   onHideUnderlay?: () => void,
+  textSelectable?: ?boolean,
+  isSelected?: ?boolean, // [macOS]
   ...
 }> {
   _onPress = () => {
     this.props.onPress(this.props.item.key);
   };
   render(): React.Node {
-    const {fixedHeight, horizontal, item} = this.props;
+    // [macOS
+    const {fixedHeight, horizontal, item, textSelectable, isSelected} =
+      this.props; // macOS]
     const itemHash = Math.abs(hashCode(item.title));
     const imgSource = THUMB_URLS[itemHash % THUMB_URLS.length];
     return (
@@ -77,10 +82,12 @@ class ItemComponent extends React.PureComponent<{
             styles.row,
             horizontal && {width: HORIZ_WIDTH},
             fixedHeight && {height: ITEM_HEIGHT},
+            isSelected && styles.selectedItem, // [macOS]
           ]}>
           {!item.noImage && <Image style={styles.thumb} source={imgSource} />}
           <Text
-            style={styles.text}
+            style={[styles.text, isSelected && styles.selectedItemText]} // [macOS]
+            selectable={textSelectable}
             numberOfLines={horizontal || fixedHeight ? 3 : undefined}>
             {item.title} - {item.text}
           </Text>
@@ -225,34 +232,26 @@ function getItemLayout(
   return {length, offset: (length + separator) * index + header, index};
 }
 
-function pressItem(context: Object, key: string) {
-  const index = Number(key);
-  const pressed = !context.state.data[index].pressed;
-  context.setState(state => {
-    const newData = [...state.data];
-    newData[index] = {
-      ...state.data[index],
-      pressed,
-      title: 'Item ' + key + (pressed ? ' (pressed)' : ''),
-    };
-    return {data: newData};
-  });
+function pressItem(item: Item): Item {
+  const title = `Item ${item.key}${!item.pressed ? ' (pressed)' : ''}`;
+  return {...item, title, pressed: !item.pressed};
 }
 
 function renderSmallSwitchOption(
-  context: Object,
-  key: string,
+  label: string,
+  value: boolean,
+  setValue: boolean => void,
 ): null | React.Node {
   if (Platform.isTV) {
     return null;
   }
   return (
     <View style={styles.option}>
-      <Text>{key}:</Text>
+      <Text>{label}:</Text>
       <Switch
         style={styles.smallSwitch}
-        value={context.state[key]}
-        onValueChange={value => context.setState({[key]: value})}
+        value={value}
+        onValueChange={setValue}
       />
     </View>
   );
@@ -358,6 +357,22 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
   },
+  // [macOS
+  selectedItem: {
+    backgroundColor: Platform.select({
+      macos: PlatformColor('selectedContentBackgroundColor'),
+      default: 'blue',
+    }),
+  },
+  selectedItemText: {
+    // This was the closest UI Element color that looked right...
+    // https://developer.apple.com/documentation/appkit/nscolor/ui_element_colors
+    color: Platform.select({
+      macos: PlatformColor('selectedMenuItemTextColor'),
+      default: 'white',
+    }),
+  },
+  // macOS]
 });
 
 module.exports = {

@@ -1,10 +1,11 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
+#if !TARGET_OS_OSX // [macOS]
 #import "RCTKeyCommands.h"
 
 #import <UIKit/UIKit.h>
@@ -74,6 +75,7 @@ RCT_NOT_IMPLEMENTED(-(instancetype)init)
   return [_key isEqual:input] && (_flags == flags || flags == 0);
 }
 
+#if DEBUG // [macOS description is a debug-only feature
 - (NSString *)description
 {
   return [NSString stringWithFormat:@"<%@:%p input=\"%@\" flags=%lld hasBlock=%@>",
@@ -83,6 +85,7 @@ RCT_NOT_IMPLEMENTED(-(instancetype)init)
                                     (long long)_flags,
                                     _block ? @"YES" : @"NO"];
 }
+#endif // macOS]
 
 @end
 
@@ -128,7 +131,7 @@ RCT_NOT_IMPLEMENTED(-(instancetype)init)
     isKeyDown = [event _isKeyDown];
   }
 
-  BOOL interactionEnabled = !UIApplication.sharedApplication.isIgnoringInteractionEvents;
+  BOOL interactionEnabled = !RCTSharedApplication().isIgnoringInteractionEvents;
   BOOL hasFirstResponder = NO;
   if (isKeyDown && modifiedInput.length > 0 && interactionEnabled) {
     UIResponder *firstResponder = nil;
@@ -265,3 +268,4 @@ RCT_NOT_IMPLEMENTED(-(instancetype)init)
 @end
 
 #endif
+#endif // [macOS]

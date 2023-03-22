@@ -1,11 +1,11 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-#import <UIKit/UIKit.h>
+#import <React/RCTUIKit.h> // [macOS]
 
 #include <react/renderer/attributedstring/AttributedString.h>
 #include <react/renderer/attributedstring/AttributedStringBox.h>
@@ -34,6 +34,8 @@ NSAttributedString *RCTNSAttributedStringFromAttributedStringBox(
 
 facebook::react::AttributedStringBox RCTAttributedStringBoxFromNSAttributedString(
     NSAttributedString *nsAttributedString);
+
+NSString *RCTNSStringFromStringApplyingTextTransform(NSString *string, facebook::react::TextTransform textTransform);
 
 @interface RCTWeakEventEmitterWrapper : NSObject
 @property (nonatomic, assign) facebook::react::SharedEventEmitter eventEmitter;

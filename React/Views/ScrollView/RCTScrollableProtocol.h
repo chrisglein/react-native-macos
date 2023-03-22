@@ -1,12 +1,12 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
 #import <React/RCTComponent.h>
-#import <React/RCTUIKit.h> // TODO(macOS GH#774)
+#import <React/RCTUIKit.h> // [macOS]
 
 /**
  * Contains any methods related to scrolling. Any `RCTView` that has scrolling
@@ -25,10 +25,10 @@
 - (void)scrollToEnd:(BOOL)animated;
 - (void)zoomToRect:(CGRect)rect animated:(BOOL)animated;
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
 - (void)addScrollListener:(NSObject<UIScrollViewDelegate> *)scrollListener;
 - (void)removeScrollListener:(NSObject<UIScrollViewDelegate> *)scrollListener;
-#endif // TODO(macOS GH#774)
+#endif // [macOS]
 
 @end
 
@@ -40,9 +40,9 @@
 @property (nonatomic, copy) RCTDirectEventBlock onRefresh;
 @property (nonatomic, readonly, getter=isRefreshing) BOOL refreshing;
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
 @optional
-@property (nonatomic, weak) UIScrollView *scrollView;
-#endif // TODO(macOS GH#774)
+@property (nonatomic, weak) RCTUIScrollView *scrollView;
+#endif // [macOS]
 
 @end

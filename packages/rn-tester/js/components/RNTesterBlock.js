@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,12 +8,10 @@
  * @flow
  */
 
-'use strict';
-
 import * as React from 'react';
 import {RNTesterThemeContext} from './RNTesterTheme';
 import {PlatformColor, StyleSheet, Text, View} from 'react-native';
-import {Platform} from 'react-native'; // TODO(macOS GH#774)
+import {Platform} from 'react-native'; // [macOS]
 
 type Props = $ReadOnly<{|
   children?: React.Node,
@@ -24,11 +22,23 @@ type Props = $ReadOnly<{|
 const RNTesterBlock = ({description, title, children}: Props): React.Node => {
   const theme = React.useContext(RNTesterThemeContext);
   return (
-    <View style={[[styles.container], {borderColor: theme.SeparatorColor}]}>
+    <View
+      style={[
+        [styles.container],
+        {
+          borderColor: theme.SeparatorColor,
+          backgroundColor: theme.SecondaryGroupedBackgroundColor,
+        },
+      ]}>
       <View style={[styles.titleContainer]}>
-        <Text style={[styles.titleText]}>{title}</Text>
+        <Text style={[styles.titleText, {color: theme.LabelColor}]}>
+          {title}
+        </Text>
         <Text
-          style={[styles.descriptionText, {marginTop: description ? 10 : 0}]}>
+          style={[
+            styles.descriptionText,
+            {color: theme.LabelColor, marginTop: description ? 10 : 0},
+          ]}>
           {description}
         </Text>
       </View>
@@ -92,6 +102,7 @@ const styles = StyleSheet.create({
   descriptionText: {
     fontSize: 12,
     opacity: 0.5,
+    // [macOS Fix tester block description color in DarkMode
     ...Platform.select({
       macos: {
         color: PlatformColor('secondaryLabelColor'),
@@ -100,12 +111,11 @@ const styles = StyleSheet.create({
         color: PlatformColor('secondaryLabelColor'),
       },
       default: undefined,
-    }),
+    }), // macOS]
   },
   children: {
-    paddingTop: 10,
-    paddingHorizontal: 10,
-    margin: 10,
+    marginHorizontal: 20,
+    marginVertical: 10,
   },
 });
 

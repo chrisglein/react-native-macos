@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -22,9 +22,17 @@
   }
   _touchHandler = [RCTSurfaceTouchHandler new];
 
+#if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && defined(__IPHONE_13_0) && \
+    __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0
+  if (@available(iOS 13.0, *)) {
+    self.modalInPresentation = YES;
+  }
+#endif
+
   return self;
 }
 
+#if !TARGET_OS_OSX // [macOS]
 - (void)viewDidLayoutSubviews
 {
   [super viewDidLayoutSubviews];
@@ -74,5 +82,6 @@
   return _supportedInterfaceOrientations;
 }
 #endif // RCT_DEV
+#endif // [macOS]
 
 @end

@@ -1,23 +1,23 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-#import <React/RCTUIKit.h> // TODO(macOS GH#774)
+#import <React/RCTUIKit.h> // [macOS]
 
 #import <React/RCTComponent.h>
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
 @interface RCTSegmentedControl : UISegmentedControl
-#else // [TODO(macOS GH#774)
+#else // [macOS
 @interface RCTSegmentedControl : NSSegmentedControl
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS]
 @property (nonatomic, assign, getter = isMomentary) BOOL momentary;
-#endif // ]TODO(macOS GH#774)
+#endif // [macOS]
 
 @property (nonatomic, copy) NSArray<NSString *> *values;
 @property (nonatomic, assign) NSInteger selectedIndex;

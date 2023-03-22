@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -30,7 +30,12 @@ void RCTOverrideAppearancePreference(NSString *const colorSchemeOverride)
   sColorSchemeOverride = colorSchemeOverride;
 }
 
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
+NSString *RCTCurrentOverrideAppearancePreference()
+{
+  return sColorSchemeOverride;
+}
+
+#if !TARGET_OS_OSX // [macOS]
 NSString *RCTColorSchemePreference(UITraitCollection *traitCollection)
 {
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && defined(__IPHONE_13_0) && \
@@ -63,34 +68,30 @@ NSString *RCTColorSchemePreference(UITraitCollection *traitCollection)
   // Default to light on older OS version - same behavior as Android.
   return RCTAppearanceColorSchemeLight;
 }
-#else // [TODO(macOS GH#774)
+#else // [macOS
 NSString *RCTColorSchemePreference(NSAppearance *appearance)
 {
-  if (@available(macOS 10.14, *)) {
-    static NSDictionary *appearances;
-    static dispatch_once_t onceToken;
+  static NSDictionary *appearances;
+  static dispatch_once_t onceToken;
 
-    dispatch_once(&onceToken, ^{
-      appearances = @{
-                      NSAppearanceNameAqua: RCTAppearanceColorSchemeLight,
-                      NSAppearanceNameDarkAqua: RCTAppearanceColorSchemeDark
-                      };
-    });
+  dispatch_once(&onceToken, ^{
+    appearances = @{
+                    NSAppearanceNameAqua: RCTAppearanceColorSchemeLight,
+                    NSAppearanceNameDarkAqua: RCTAppearanceColorSchemeDark
+                    };
+  });
 
-    if (!sAppearancePreferenceEnabled) {
-      // Return the default if the app doesn't allow different color schemes.
-      return RCTAppearanceColorSchemeLight;
-    }
-
-    appearance = appearance ?: [NSAppearance currentAppearance];
-    NSAppearanceName appearanceName = [appearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
-    return appearances[appearanceName] ?: RCTAppearanceColorSchemeLight;
+  if (!sAppearancePreferenceEnabled) {
+    // Return the default if the app doesn't allow different color schemes.
+    return RCTAppearanceColorSchemeLight;
   }
 
-  // Default to light on older OS version - same behavior as Android.
-  return RCTAppearanceColorSchemeLight;
+  appearance = appearance ?: [NSApp effectiveAppearance];
+
+  NSAppearanceName appearanceName = [appearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
+  return appearances[appearanceName] ?: RCTAppearanceColorSchemeLight;
 }
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 
 @interface RCTAppearance () <NativeAppearanceSpec>
 @end
@@ -116,7 +117,7 @@ RCT_EXPORT_MODULE(Appearance)
   return std::make_shared<NativeAppearanceSpecJSI>(params);
 }
 
-#if TARGET_OS_OSX // [TODO(macOS GH#774): on macOS don't lazy init _currentColorScheme because [NSAppearance currentAppearance] cannot be executed on background thread.
+#if TARGET_OS_OSX // [macOS on macOS don't lazy init _currentColorScheme because [NSApp effectiveAppearance] cannot be executed on background thread.
 - (instancetype)init
 {
   if (self = [super init]) {
@@ -124,32 +125,39 @@ RCT_EXPORT_MODULE(Appearance)
   }
   return self;
 }
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 
 RCT_EXPORT_SYNCHRONOUS_TYPED_METHOD(NSString *, getColorScheme)
 {
-#if !TARGET_OS_OSX // [TODO(macOS GH#774)
-  _currentColorScheme = RCTColorSchemePreference(nil);
-#endif // ]TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
+  if (_currentColorScheme == nil) {
+    _currentColorScheme = RCTColorSchemePreference(nil);
+  }
+#endif // [macOS]
   return _currentColorScheme;
 }
 
+#if !TARGET_OS_OSX // [macOS]
 - (void)appearanceChanged:(NSNotification *)notification
 {
   NSDictionary *userInfo = [notification userInfo];
-#if !TARGET_OS_OSX // TODO(macOS GH#774)
   UITraitCollection *traitCollection = nil;
   if (userInfo) {
     traitCollection = userInfo[RCTUserInterfaceStyleDidChangeNotificationTraitCollectionKey];
   }
   NSString *newColorScheme = RCTColorSchemePreference(traitCollection);
-#else // [TODO(macOS GH#774)
-  NSAppearance *appearance = nil;
-  if (userInfo) {
-    appearance = userInfo[RCTUserInterfaceStyleDidChangeNotificationTraitCollectionKey];
+#else // [macOS
+- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(id)object
+                        change:(NSDictionary *)change
+                       context:(void *)context
+{
+  if (object != NSApp || ![keyPath isEqualToString:@"effectiveAppearance"]) {
+    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+    return;
   }
-  NSString *newColorScheme = RCTColorSchemePreference(appearance);
-#endif // ]TODO(macOS GH#774)
+  NSString *newColorScheme = RCTColorSchemePreference(nil);
+#endif // macOS]
   if (![_currentColorScheme isEqualToString:newColorScheme]) {
     _currentColorScheme = newColorScheme;
     [self sendEventWithName:@"appearanceChanged" body:@{@"colorScheme" : newColorScheme}];
@@ -165,19 +173,30 @@ RCT_EXPORT_SYNCHRONOUS_TYPED_METHOD(NSString *, getColorScheme)
 
 - (void)startObserving
 {
-  if (@available(macOS 10.14, iOS 13.0, *)) { // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
+  if (@available(iOS 13.0, *)) {
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(appearanceChanged:)
                                                  name:RCTUserInterfaceStyleDidChangeNotification
                                                object:nil];
   }
+#else  // [macOS
+  [NSApp addObserver:self
+          forKeyPath:@"effectiveAppearance"
+             options:NSKeyValueObservingOptionNew
+             context:nil];  
+#endif // macOS]
 }
 
 - (void)stopObserving
 {
-  if (@available(macOS 10.14, iOS 13.0, *)) { // TODO(macOS GH#774)
+#if !TARGET_OS_OSX // [macOS]
+  if (@available(iOS 13.0, *)) {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
   }
+#else // [macOS
+  [NSApp removeObserver:self forKeyPath:@"effectiveAppearance" context:nil];  
+#endif // macOS]
 }
 
 @end

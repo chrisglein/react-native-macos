@@ -8,7 +8,7 @@
  * @flow
  */
 
-'use strict'; // TODO(OSS Candidate ISS#2710739)
+'use strict'; // [macOS]
 
 const React = require('react');
 const ReactNative = require('react-native');
@@ -28,7 +28,7 @@ class AccessibilityShowMenu extends React.Component<{}> {
     }
   };
 
-  render() {
+  render(): React.Node {
     return (
       <View>
         <Text>
@@ -59,7 +59,7 @@ exports.description =
 exports.examples = [
   {
     title: 'AccessibilityShowMenu',
-    render: function(): React.Element<any> {
+    render: function (): React.Element<any> {
       return <AccessibilityShowMenu />;
     },
   },

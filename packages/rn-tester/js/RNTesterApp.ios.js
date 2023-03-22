@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,19 +8,18 @@
  * @flow
  */
 
-'use strict';
+import type {Node} from 'react';
 
-import {AppRegistry, NativeModules, Platform, View} from 'react-native'; // TODO(OSS Candidate ISS#2710739): everything but AppRegistry
+import {AppRegistry, NativeModules, Platform, View} from 'react-native'; // [macOS] everything but AppRegistry
 import React from 'react';
 
 import SnapshotViewIOS from './examples/Snapshot/SnapshotViewIOS.ios';
-import RNTesterExampleContainer from './components/RNTesterExampleContainer';
+import RNTesterModuleContainer from './components/RNTesterModuleContainer';
 import RNTesterList from './utils/RNTesterList';
 import RNTesterApp from './RNTesterAppShared';
-import type {RNTesterExample} from './types/RNTesterTypes';
+import type {RNTesterModuleInfo} from './types/RNTesterTypes';
 
-const {TestModule} = NativeModules; // TODO(OSS Candidate ISS#2710739)
-const requestAnimationFrame = require('fbjs/lib/requestAnimationFrame'); // TODO(OSS Candidate ISS#2710739)
+const {TestModule} = NativeModules; // [macOS]
 
 AppRegistry.registerComponent('SetPropertiesExampleApp', () =>
   require('./examples/SetPropertiesExample/SetPropertiesExampleApp'),
@@ -31,15 +30,18 @@ AppRegistry.registerComponent('RootViewSizeFlexibilityExampleApp', () =>
 AppRegistry.registerComponent('RNTesterApp', () => RNTesterApp);
 
 // Register suitable examples for snapshot tests
-RNTesterList.ComponentExamples.concat(RNTesterList.APIExamples).forEach(
-  (Example: RNTesterExample) => {
+RNTesterList.Components.concat(RNTesterList.APIs).forEach(
+  (Example: RNTesterModuleInfo) => {
     const ExampleModule = Example.module;
     if (ExampleModule.displayName) {
       class Snapshotter extends React.Component<{...}> {
-        render() {
+        render(): Node {
           return (
             <SnapshotViewIOS>
-              <RNTesterExampleContainer module={ExampleModule} />
+              <RNTesterModuleContainer
+                module={ExampleModule}
+                onExampleCardPress={() => {}}
+              />
             </SnapshotViewIOS>
           );
         }
@@ -51,7 +53,7 @@ RNTesterList.ComponentExamples.concat(RNTesterList.APIExamples).forEach(
       );
     }
 
-    // [TODO(OSS Candidate ISS#2710739)
+    // [macOS
     class LoadPageTest extends React.Component<{}> {
       componentDidMount() {
         requestAnimationFrame(() => {
@@ -59,8 +61,8 @@ RNTesterList.ComponentExamples.concat(RNTesterList.APIExamples).forEach(
         });
       }
 
-      render() {
-        return <RNTesterExampleContainer module={ExampleModule} />;
+      render(): Node {
+        return <RNTesterModuleContainer module={ExampleModule} />;
       }
     }
 
@@ -68,15 +70,15 @@ RNTesterList.ComponentExamples.concat(RNTesterList.APIExamples).forEach(
       'LoadPageTest_' + Example.key,
       () => LoadPageTest,
     );
-    // ]TODO(OSS Candidate ISS#2710739)
+    // macOS]
   },
 );
 
-// [TODO(OSS Candidate ISS#2710739)
+// [macOS
 class EnumerateExamplePages extends React.Component<{}> {
-  render() {
-    RNTesterList.ComponentExamples.concat(RNTesterList.APIExamples).forEach(
-      (Example: RNTesterExample) => {
+  render(): Node {
+    RNTesterList.Components.concat(RNTesterList.APIs).forEach(
+      (Example: RNTesterModuleInfo) => {
         let skipTest = false;
         if ('skipTest' in Example) {
           const platforms = Example.skipTest;
@@ -98,6 +100,6 @@ AppRegistry.registerComponent(
   'EnumerateExamplePages',
   () => EnumerateExamplePages,
 );
-// ]TODO(OSS Candidate ISS#2710739)
+// macOS]
 
 module.exports = RNTesterApp;

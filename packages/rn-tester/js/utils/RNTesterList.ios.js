@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -10,9 +10,11 @@
 
 'use strict';
 
-import type {RNTesterExample} from '../types/RNTesterTypes';
+import type {RNTesterModuleInfo} from '../types/RNTesterTypes';
 
-const ComponentExamples: Array<RNTesterExample> = [
+import ReactNativeFeatureFlags from 'react-native/Libraries/ReactNative/ReactNativeFeatureFlags';
+
+const Components: Array<RNTesterModuleInfo> = [
   {
     key: 'ActivityIndicatorExample',
     category: 'UI',
@@ -25,47 +27,38 @@ const ComponentExamples: Array<RNTesterExample> = [
     category: 'UI',
     supportsTVOS: true,
   },
-  // [TODO(OSS Candidate ISS#2710739)
   {
-    key: 'DarkModeExample',
-    module: require('../examples/DarkModeExample/DarkModeExample'),
-  }, // ]TODO(OSS Candidate ISS#2710739)
-  // [TODO(macOS GH#774)
-  {
-    key: 'DatePickerMacOSExample',
-    module: require('../examples/DatePicker/DatePickerMacOSExample'),
-  }, // ]TODO(macOS GH#774)
-  {
-    key: 'FlatListExample',
-    module: require('../examples/FlatList/FlatListExample'),
+    key: 'FlatListExampleIndex',
+    module: require('../examples/FlatList/FlatListExampleIndex').default,
     category: 'ListView',
     supportsTVOS: true,
   },
-  // [TODO(OSS Candidate ISS#2710739)
+  // [macOS
   {
     key: 'FocusEvents',
     module: require('../examples/FocusEventsExample/FocusEventsExample'),
-  }, // ]TODO(OSS Candidate ISS#2710739)
+  },
+  // [macOS Github#1412
+  {
+    key: 'FocusOnMount',
+    module: require('../examples/FocusOnMount/FocusOnMount'),
+  },
+  // macOS]
   {
     key: 'KeyboardEvents',
     module: require('../examples/KeyboardEventsExample/KeyboardEventsExample'),
-  }, // ]TODO(OSS Candidate ISS#2710739)
-  {
-    key: 'Key-View Accessibility Looping',
-    module: require('../examples/KeyViewLoopExample/KeyViewLoopExample'),
-  }, // ]TODO(OSS Candidate GH#768)
+  },
   {
     key: 'AccessibilityShowMenu',
     module: require('../examples/AccessibilityShowMenu/AccessibilityShowMenu'),
-  }, // ]TODO(OSS Candidate ISS#2710739)
+  }, // macOS]
   {
     key: 'ImageExample',
     module: require('../examples/Image/ImageExample'),
     skipTest: {
-      // [TODO(OSS Candidate ISS#2710739)
-      ios:
-        'Reason: -[NSURLResponse allHeaderFields]: unrecognized selector exception. Occurs upstream also.',
-    }, // ]TODO(OSS Candidate ISS#2710739)
+      // [macOS
+      ios: 'Reason: -[NSURLResponse allHeaderFields]: unrecognized selector exception. Occurs upstream also.',
+    }, // macOS]
     category: 'Basic',
     supportsTVOS: true,
   },
@@ -91,11 +84,6 @@ const ComponentExamples: Array<RNTesterExample> = [
   {
     key: 'ModalExample',
     module: require('../examples/Modal/ModalExample'),
-    supportsTVOS: true,
-  },
-  {
-    key: 'MultiColumnExample',
-    module: require('../examples/MultiColumn/MultiColumnExample'),
     supportsTVOS: true,
   },
   {
@@ -136,18 +124,24 @@ const ComponentExamples: Array<RNTesterExample> = [
     supportsTVOS: true,
   },
   {
-    key: 'SectionListExample',
-    module: require('../examples/SectionList/SectionListExample'),
-    skipTest: {
-      // [TODO(OSS Candidate ISS#2710739)
-      ios: 'Reason: RedBox shown on failure to load an image.',
-    }, // ]TODO(OSS Candidate ISS#2710739)
+    key: 'ScrollViewIndicatorInsetsExample',
+    module: require('../examples/ScrollView/ScrollViewIndicatorInsetsExample'),
+  },
+  {
+    key: 'SectionListIndex',
+    module: require('../examples/SectionList/SectionListIndex'),
     category: 'ListView',
     supportsTVOS: true,
   },
   {
     key: 'StatusBarExample',
     module: require('../examples/StatusBar/StatusBarExample'),
+    supportsTVOS: false,
+  },
+  {
+    key: 'SwipeableCardExample',
+    module: require('../examples/SwipeableCardExample/SwipeableCardExample'),
+    category: 'UI',
     supportsTVOS: false,
   },
   {
@@ -158,14 +152,12 @@ const ComponentExamples: Array<RNTesterExample> = [
   },
   {
     key: 'TextExample',
-    /* $FlowFixMe TODO(macOS GH#774): allow macOS to share iOS test */
     module: require('../examples/Text/TextExample.ios'),
     category: 'Basic',
     supportsTVOS: true,
   },
   {
     key: 'TextInputExample',
-    /* $FlowFixMe TODO(macOS GH#774): allow macOS to share iOS test */
     module: require('../examples/TextInput/TextInputExample.ios'),
     category: 'Basic',
     supportsTVOS: true,
@@ -190,9 +182,21 @@ const ComponentExamples: Array<RNTesterExample> = [
     category: 'Basic',
     supportsTVOS: true,
   },
+  {
+    key: 'NewArchitectureExample',
+    category: 'UI',
+    module: require('../examples/NewArchitecture/NewArchitectureExample'),
+    supportsTVOS: false,
+    // [macOS
+    skipTest: {
+      default:
+        'Reason: requires RCT_NEW_ARCH_ENABLED flag to be set during build',
+    },
+    // macOS]
+  },
 ];
 
-const APIExamples: Array<RNTesterExample> = [
+const APIs: Array<RNTesterModuleInfo> = [
   {
     key: 'AccessibilityExample',
     module: require('../examples/Accessibility/AccessibilityExample'),
@@ -216,19 +220,14 @@ const APIExamples: Array<RNTesterExample> = [
     category: 'iOS',
     supportsTVOS: true,
   },
-  // [TODO(macOS GH#774)
   {
-    key: 'AlertMacOSExample',
-    module: require('../examples/Alert/AlertMacOSExample'),
-  }, // ]TODO(macOS GH#774)
-  {
-    key: 'AnimatedExample',
-    module: require('../examples/Animated/AnimatedExample'),
+    key: 'AnimatedIndex',
+    module: require('../examples/Animated/AnimatedIndex').default,
     supportsTVOS: true,
   },
   {
     key: 'AnExApp',
-    module: require('../examples/Animated/AnimatedGratuitousApp/AnExApp'),
+    module: require('../examples/AnimatedGratuitousApp/AnExApp'),
     supportsTVOS: true,
   },
   {
@@ -257,6 +256,11 @@ const APIExamples: Array<RNTesterExample> = [
     supportsTVOS: false,
   },
   {
+    key: 'ASANCrashExample',
+    module: require('../examples/ASAN/ASANCrashExample'),
+    supportsTVOS: false,
+  },
+  {
     key: 'DevSettings',
     module: require('../examples/DevSettings/DevSettingsExample'),
   },
@@ -265,10 +269,17 @@ const APIExamples: Array<RNTesterExample> = [
     module: require('../examples/Dimensions/DimensionsExample'),
     supportsTVOS: true,
   },
+  // [macOS
   {
     key: 'Focus Ring',
     module: require('../examples/FocusRing/FocusRingExample'),
     supportsTVOS: false,
+  },
+  // macOS]
+  {
+    key: 'Keyboard',
+    module: require('../examples/Keyboard/KeyboardExample').default,
+    supportsTVOS: true,
   },
   {
     key: 'LayoutAnimationExample',
@@ -313,11 +324,11 @@ const APIExamples: Array<RNTesterExample> = [
   {
     key: 'RCTRootViewIOSExample',
     module: require('../examples/RCTRootView/RCTRootViewIOSExample'),
-    // [TODO(OSS Candidate ISS#2710739)
+    // [macOS
     skipTest: {
       default:
         'Reason: requires native components and is convered by RCTRootViewIntegrationTests',
-    }, // ]TODO(OSS Candidate ISS#2710739)
+    }, // macOS]
     supportsTVOS: true,
   },
   {
@@ -343,19 +354,19 @@ const APIExamples: Array<RNTesterExample> = [
   {
     key: 'TransformExample',
     module: require('../examples/Transform/TransformExample'),
-    // [TODO(OSS Candidate ISS#2710739)
+    // [macOS
     skipTest: {
       default: 'Reason: Stack overflow in jsi, upstream issue.',
-    }, // ]TODO(OSS Candidate ISS#2710739)
+    }, // macOS]
     supportsTVOS: true,
   },
   {
     key: 'TurboModuleExample',
     module: require('../examples/TurboModule/TurboModuleExample'),
-    // [TODO(OSS Candidate ISS#2710739)
+    // [macOS
     skipTest: {
       default: 'Reason: requires TurboModule to be configured in host app.',
-    }, // ]TODO(OSS Candidate ISS#2710739)
+    }, // macOS]
     supportsTVOS: false,
   },
   {
@@ -375,15 +386,23 @@ const APIExamples: Array<RNTesterExample> = [
   },
 ];
 
+if (ReactNativeFeatureFlags.shouldEmitW3CPointerEvents()) {
+  APIs.push({
+    key: 'W3C PointerEvents',
+    category: 'Experimental',
+    module: require('../examples/Experimental/W3CPointerEventsExample').default,
+  });
+}
+
 const Modules: {...} = {};
 
-APIExamples.concat(ComponentExamples).forEach(Example => {
+APIs.concat(Components).forEach(Example => {
   Modules[Example.key] = Example.module;
 });
 
 const RNTesterList = {
-  APIExamples,
-  ComponentExamples,
+  APIs,
+  Components,
   Modules,
 };
 

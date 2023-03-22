@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -57,7 +57,12 @@ static NSLineBreakMode RCTNSLineBreakModeFromEllipsizeMode(EllipsizeMode ellipsi
 
   CGSize size = [layoutManager usedRectForTextContainer:textContainer].size;
 
+#if !TARGET_OS_OSX // [macOS]
   size = (CGSize){RCTCeilPixelValue(size.width), RCTCeilPixelValue(size.height)};
+#else // [macOS
+  CGFloat scale = [[NSScreen mainScreen] backingScaleFactor];
+  size = (CGSize){RCTCeilPixelValue(size.width, scale), RCTCeilPixelValue(size.height, scale)};
+#endif // macOS]
 
   __block auto attachments = TextMeasurement::Attachments{};
 
@@ -75,12 +80,14 @@ static NSLineBreakMode RCTNSLineBreakModeFromEllipsizeMode(EllipsizeMode ellipsi
 
                 UIFont *font = [textStorage attribute:NSFontAttributeName atIndex:range.location effectiveRange:nil];
 
-                CGRect frame = {{glyphRect.origin.x,
-                                 glyphRect.origin.y + glyphRect.size.height - attachmentSize.height + font.descender},
-                                attachmentSize};
+                CGRect frame = {
+                    {glyphRect.origin.x,
+                     glyphRect.origin.y + glyphRect.size.height - attachmentSize.height + font.descender},
+                    attachmentSize};
 
-                auto rect = facebook::react::Rect{facebook::react::Point{frame.origin.x, frame.origin.y},
-                                                  facebook::react::Size{frame.size.width, frame.size.height}};
+                auto rect = facebook::react::Rect{
+                    facebook::react::Point{frame.origin.x, frame.origin.y},
+                    facebook::react::Size{frame.size.width, frame.size.height}};
 
                 attachments.push_back(TextMeasurement::Attachment{rect, false});
               }];
@@ -156,12 +163,13 @@ static NSLineBreakMode RCTNSLineBreakModeFromEllipsizeMode(EllipsizeMode ellipsi
                                             auto rect = facebook::react::Rect{
                                                 facebook::react::Point{usedRect.origin.x, usedRect.origin.y},
                                                 facebook::react::Size{usedRect.size.width, usedRect.size.height}};
-                                            auto line = LineMeasurement{std::string([renderedString UTF8String]),
-                                                                        rect,
-                                                                        -font.descender,
-                                                                        font.capHeight,
-                                                                        font.ascender,
-                                                                        font.xHeight};
+                                            auto line = LineMeasurement{
+                                                std::string([renderedString UTF8String]),
+                                                rect,
+                                                -font.descender,
+                                                font.capHeight,
+                                                font.ascender,
+                                                font.xHeight};
                                             blockParagraphLines->push_back(line);
                                           }];
   return paragraphLines;

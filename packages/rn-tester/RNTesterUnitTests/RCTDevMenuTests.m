@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -11,11 +11,15 @@
 #import <React/RCTBridge.h>
 #import <React/RCTDevMenu.h>
 
-typedef void(^RCTDevMenuAlertActionHandler)(UIAlertAction *action);
+#if !TARGET_OS_OSX // [macOS]
+typedef void (^RCTDevMenuAlertActionHandler)(UIAlertAction *action);
+#endif // [macOS]
 
 @interface RCTDevMenu ()
 
+#if !TARGET_OS_OSX // [macOS]
 - (RCTDevMenuAlertActionHandler)alertActionHandlerForDevItem:(RCTDevMenuItem *)item;
+#endif // [macOS]
 
 @end
 
@@ -23,8 +27,7 @@ typedef void(^RCTDevMenuAlertActionHandler)(UIAlertAction *action);
 
 @end
 
-@implementation RCTDevMenuTests
-{
+@implementation RCTDevMenuTests {
   RCTBridge *_bridge;
 }
 
@@ -40,6 +43,7 @@ typedef void(^RCTDevMenuAlertActionHandler)(UIAlertAction *action);
   RCT_RUN_RUNLOOP_WHILE(_bridge.isLoading);
 }
 
+#if !TARGET_OS_OSX // [macOS]
 - (void)testShowCreatingActionSheet
 {
   XCTAssertFalse([_bridge.devMenu isActionSheetShown]);
@@ -60,5 +64,6 @@ typedef void(^RCTDevMenuAlertActionHandler)(UIAlertAction *action);
     XCTAssertTrue([_bridge.devMenu isActionSheetShown]);
   }
 }
+#endif // [macOS]
 
 @end

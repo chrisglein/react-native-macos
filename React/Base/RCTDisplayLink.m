@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,23 +9,23 @@
 
 #import <Foundation/Foundation.h>
 
-#import "RCTPlatformDisplayLink.h" // TODO(macOS GH#774)
+#import "RCTPlatformDisplayLink.h" // [macOS]
 #import "RCTAssert.h"
 #import "RCTBridgeModule.h"
 #import "RCTFrameUpdate.h"
 #import "RCTModuleData.h"
 #import "RCTProfile.h"
 
-#if TARGET_OS_OSX // TODO(macOS, https://github.com/microsoft/react-native-macos/issues/533)
+#if TARGET_OS_OSX // [macOS Github#533
 // To compile in Xcode 12 beta 4 on macOS, we need to explicitly pull in the framework to get the definition for CACurrentMediaTime()
 #import <Quartz/Quartz.h>
-#endif // TODO(macOS, https://github.com/microsoft/react-native-macos/issues/533)
+#endif // macOS]
 
 #define RCTAssertRunLoop() \
   RCTAssert(_runLoop == [NSRunLoop currentRunLoop], @"This method must be called on the CADisplayLink run loop")
 
 @implementation RCTDisplayLink {
-  RCTPlatformDisplayLink *_jsDisplayLink; // TODO(macOS GH#774)
+  RCTPlatformDisplayLink *_jsDisplayLink; // [macOS]
   NSMutableSet<RCTModuleData *> *_frameUpdateObservers;
   NSRunLoop *_runLoop;
 }
@@ -34,7 +34,7 @@
 {
   if ((self = [super init])) {
     _frameUpdateObservers = [NSMutableSet new];
-    _jsDisplayLink = [RCTPlatformDisplayLink displayLinkWithTarget:self selector:@selector(_jsThreadUpdate:)]; // TODO(macOS GH#774)
+    _jsDisplayLink = [RCTPlatformDisplayLink displayLinkWithTarget:self selector:@selector(_jsThreadUpdate:)]; // [macOS]
   }
 
   return self;
@@ -67,7 +67,9 @@
       [weakSelf updateJSDisplayLinkState];
     } else {
       CFRunLoopPerformBlock(cfRunLoop, kCFRunLoopDefaultMode, ^{
-        [weakSelf updateJSDisplayLinkState];
+        @autoreleasepool {
+          [weakSelf updateJSDisplayLinkState];
+        }
       });
       CFRunLoopWakeUp(cfRunLoop);
     }
@@ -78,7 +80,9 @@
   // start receiving updates anyway.
   if (![observer isPaused] && _runLoop) {
     CFRunLoopPerformBlock([_runLoop getCFRunLoop], kCFRunLoopDefaultMode, ^{
-      [self updateJSDisplayLinkState];
+      @autoreleasepool {
+        [self updateJSDisplayLinkState];
+      }
     });
   }
 }
@@ -96,6 +100,15 @@
 
 - (void)invalidate
 {
+  // [macOS
+  // ensure observer callbacks do not hold a reference to weak self via pauseCallback
+  for (RCTModuleData *moduleData in _frameUpdateObservers) {
+    id<RCTFrameUpdateObserver> observer = (id<RCTFrameUpdateObserver>)moduleData.instance;
+    [observer setPauseCallback:nil];
+  }
+  [_frameUpdateObservers removeAllObjects];	// just to be explicit
+  // macOS]
+
   [_jsDisplayLink invalidate];
 }
 
@@ -108,7 +121,7 @@
   }
 }
 
-- (void)_jsThreadUpdate:(RCTPlatformDisplayLink *)displayLink // TODO(macOS GH#774)
+- (void)_jsThreadUpdate:(RCTPlatformDisplayLink *)displayLink // [macOS]
 {
   RCTAssertRunLoop();
 
@@ -146,9 +159,7 @@
   BOOL pauseDisplayLink = YES;
   for (RCTModuleData *moduleData in _frameUpdateObservers) {
     id<RCTFrameUpdateObserver> observer = (id<RCTFrameUpdateObserver>)moduleData.instance;
-    BOOL validObserverProtocol = [observer conformsToProtocol:@protocol(RCTFrameUpdateObserver)]; // [TODO: GH#774- add protocol check before accessing data
-    RCTAssert(validObserverProtocol, @"Observer does not conform to necessary protocol (RCTFrameUpdateObserver)");
-    if (validObserverProtocol && !observer.paused) { // TODO: GH#774- add protocol check before accessing data]
+    if (!observer.paused) {
       pauseDisplayLink = NO;
       break;
     }

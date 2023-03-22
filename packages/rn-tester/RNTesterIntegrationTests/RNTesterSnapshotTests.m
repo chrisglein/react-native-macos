@@ -1,11 +1,11 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-#import <React/RCTUIKit.h> // TODO(macOS ISS#3536887)
+#import <React/RCTUIKit.h> // [macOS]
 #import <XCTest/XCTest.h>
 
 #import <RCTTest/RCTTestRunner.h>
@@ -20,14 +20,17 @@
 
 - (void)setUp
 {
-#if !TARGET_OS_OSX // TODO(macOS ISS#3536887)
+#if !TARGET_OS_OSX // [macOS]
   _runner = RCTInitRunnerForApp(@"packages/rn-tester/js/RNTesterApp.ios", nil, nil);
   if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 10) {
     _runner.testSuffix = [NSString stringWithFormat:@"-iOS%d", UIDevice.currentDevice.systemVersion.intValue];
   }
-#else // [TODO(macOS ISS#3536887)
+#else // [macOS
   _runner = RCTInitRunnerForApp(@"packages/rn-tester/js/RNTesterApp.macos", nil, nil);
-#endif // ]TODO(macOS ISS#3536887)
+#endif // macOS]
+
+  // To update snapshots, set recordMode to YES and re-run RNTesterSnapshotTests.
+  // Do not forget to set back to NO before committing your changes.
   _runner.recordMode = NO;
 }
 
@@ -37,6 +40,7 @@
     [_runner runTest:_cmd module:@ #name]; \
   }
 
+#if !TARGET_OS_OSX // [macOS] Github #1739: Disable these failing tests
 RCT_TEST(ViewExample)
 RCT_TEST(LayoutExample)
 RCT_TEST(ScrollViewExample)
@@ -45,6 +49,7 @@ RCT_TEST(TextExample)
 // No switch available on tvOS
 RCT_TEST(SwitchExample)
 #endif
+#endif // [macOS]
 
 - (void)testZZZNotInRecordMode
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -31,12 +31,12 @@ RCT_NOT_IMPLEMENTED(-(nullable instancetype)initWithCoder : (NSCoder *)coder)
   return self;
 }
 
-#if TARGET_OS_OSX
+#if TARGET_OS_OSX // [macOS
 - (BOOL)isFlipped
 {
   return YES;
 }
-#endif
+#endif // macOS]
 
 #pragma mark - Internal Interface
 

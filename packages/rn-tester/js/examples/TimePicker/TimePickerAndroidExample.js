@@ -118,7 +118,7 @@ exports.description = 'Standard Android time picker dialog';
 exports.examples = [
   {
     title: 'Simple time picker',
-    render: function(): React.Element<typeof TimePickerAndroidExample> {
+    render: function (): React.Element<typeof TimePickerAndroidExample> {
       return <TimePickerAndroidExample />;
     },
   },

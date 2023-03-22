@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -10,24 +10,27 @@
 #import <React/RCTBridge.h>
 
 #include <React/RCTUITextField.h>
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS
 #include <React/RCTUISecureTextField.h>
-#endif // ]TODO(macOS GH#774)
+#endif // macOS]
 
-@implementation RCTSinglelineTextInputView
-{
+@implementation RCTSinglelineTextInputView {
   RCTUITextField *_backedTextInputView;
-  BOOL _useSecureTextField; // TODO(macOS GH#774)
+  BOOL _useSecureTextField; // [macOS]
 }
 
 - (instancetype)initWithBridge:(RCTBridge *)bridge
 {
   if (self = [super initWithBridge:bridge]) {
-    // `blurOnSubmit` defaults to `true` for <TextInput multiline={false}> by design.
-    self.blurOnSubmit = YES;
+    // `submitBehavior` defaults to `"blurAndSubmit"` for <TextInput multiline={false}> by design.
+    self.submitBehavior = @"blurAndSubmit";
 
     _backedTextInputView = [[RCTUITextField alloc] initWithFrame:self.bounds];
     _backedTextInputView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+#if TARGET_OS_OSX // [macOS
+    _backedTextInputView.cell.scrollable = YES;
+    _backedTextInputView.cell.usesSingleLineMode = YES;
+#endif // macOS]
     _backedTextInputView.textInputDelegate = self;
 
     [self addSubview:_backedTextInputView];
@@ -41,7 +44,7 @@
   return _backedTextInputView;
 }
 
-#if TARGET_OS_OSX // [TODO(macOS GH#774)
+#if TARGET_OS_OSX // [macOS
 - (void)setReactPaddingInsets:(UIEdgeInsets)reactPaddingInsets
 {
   [super setReactPaddingInsets:reactPaddingInsets];
@@ -87,6 +90,13 @@
     [self replaceSubview:previousTextField with:_backedTextInputView];
   }
 }
-#endif // ]TODO(macOS GH#774)
+
+- (void)setEnableFocusRing:(BOOL)enableFocusRing {
+  [super setEnableFocusRing:enableFocusRing];
+  if ([_backedTextInputView respondsToSelector:@selector(setEnableFocusRing:)]) {
+    [_backedTextInputView setEnableFocusRing:enableFocusRing];
+  }
+}
+#endif // macOS]
 
 @end

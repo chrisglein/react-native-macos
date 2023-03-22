@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -15,15 +15,19 @@
 #import <react/renderer/components/rncore/Props.h>
 #import <react/renderer/components/slider/SliderComponentDescriptor.h>
 
-#import "FBRCTFabricComponentsPlugins.h"
+#import "RCTFabricComponentsPlugins.h"
 
 using namespace facebook::react;
 
+#if !TARGET_OS_OSX // [macOS]
 @interface RCTSliderComponentView () <RCTImageResponseDelegate>
+#else // [macOS
+@interface RCTSliderComponentView () <RCTImageResponseDelegate, RCTUISliderDelegate>
+#endif // macOS]
 @end
 
 @implementation RCTSliderComponentView {
-  UISlider *_sliderView;
+  RCTUISlider *_sliderView; // [macOS]
   float _previousValue;
 
   UIImage *_trackImage;
@@ -48,14 +52,20 @@ using namespace facebook::react;
     static const auto defaultProps = std::make_shared<const SliderProps>();
     _props = defaultProps;
 
-    _sliderView = [[UISlider alloc] initWithFrame:self.bounds];
+    _sliderView = [[RCTUISlider alloc] initWithFrame:self.bounds]; // [macOS]
 
+#if !TARGET_OS_OSX // [macOS]
     [_sliderView addTarget:self action:@selector(onChange:) forControlEvents:UIControlEventValueChanged];
     [_sliderView addTarget:self
                     action:@selector(sliderTouchEnd:)
           forControlEvents:(UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel)];
+#else // [macOS
+    _sliderView.delegate = self;
+    [_sliderView setTarget:self];
+    [_sliderView setAction:@selector(onChange:)];
+#endif // macOS]
 
-    _sliderView.value = defaultProps->value;
+    _sliderView.value = (float)defaultProps->value;
 
     _trackImageResponseObserverProxy = RCTImageResponseObserverProxy(self);
     _minimumTrackImageResponseObserverProxy = RCTImageResponseObserverProxy(self);
@@ -79,6 +89,7 @@ using namespace facebook::react;
   self.maximumTrackImageCoordinator = nullptr;
   self.thumbImageCoordinator = nullptr;
 
+#if !TARGET_OS_OSX // [macOS]
   // Tint colors will be taken care of when props are set again - we just
   // need to make sure that image properties are reset here
   [_sliderView setMinimumTrackImage:nil forState:UIControlStateNormal];
@@ -87,6 +98,7 @@ using namespace facebook::react;
   if (_thumbImage) {
     [_sliderView setThumbImage:nil forState:UIControlStateNormal];
   }
+#endif // [macOS]
 
   _trackImage = nil;
   _minimumTrackImage = nil;
@@ -94,8 +106,8 @@ using namespace facebook::react;
   _thumbImage = nil;
 
   const auto &props = *std::static_pointer_cast<const SliderProps>(_props);
-  _sliderView.value = props.value;
-  _previousValue = props.value;
+  _sliderView.value = (float)props.value;
+  _previousValue = (float)props.value;
 }
 
 #pragma mark - RCTComponentViewProtocol
@@ -112,18 +124,18 @@ using namespace facebook::react;
 
   // `minimumValue`
   if (oldSliderProps.minimumValue != newSliderProps.minimumValue) {
-    _sliderView.minimumValue = newSliderProps.minimumValue;
+    _sliderView.minimumValue = (float)newSliderProps.minimumValue;
   }
 
   // `maximumValue`
   if (oldSliderProps.maximumValue != newSliderProps.maximumValue) {
-    _sliderView.maximumValue = newSliderProps.maximumValue;
+    _sliderView.maximumValue = (float)newSliderProps.maximumValue;
   }
 
   // `value`
   if (oldSliderProps.value != newSliderProps.value) {
-    _sliderView.value = newSliderProps.value;
-    _previousValue = newSliderProps.value;
+    _sliderView.value = (float)newSliderProps.value;
+    _previousValue = (float)newSliderProps.value;
   }
 
   // `disabled`
@@ -131,10 +143,12 @@ using namespace facebook::react;
     _sliderView.enabled = !newSliderProps.disabled;
   }
 
+#if !TARGET_OS_OSX // [macOS]
   // `thumbTintColor`
   if (oldSliderProps.thumbTintColor != newSliderProps.thumbTintColor) {
     _sliderView.thumbTintColor = RCTUIColorFromSharedColor(newSliderProps.thumbTintColor);
   }
+#endif // [macOS]
 
   // `minimumTrackTintColor`
   if (oldSliderProps.minimumTrackTintColor != newSliderProps.minimumTrackTintColor) {
@@ -230,6 +244,7 @@ using namespace facebook::react;
 
 - (void)setTrackImage:(UIImage *)trackImage
 {
+#if !TARGET_OS_OSX // [macOS]
   if ([trackImage isEqual:_trackImage]) {
     return;
   }
@@ -244,10 +259,12 @@ using namespace facebook::react;
                                                           resizingMode:UIImageResizingModeStretch];
   [_sliderView setMinimumTrackImage:minimumTrackImage forState:UIControlStateNormal];
   [_sliderView setMaximumTrackImage:maximumTrackImage forState:UIControlStateNormal];
+#endif // [macOS]
 }
 
 - (void)setMinimumTrackImage:(UIImage *)minimumTrackImage
 {
+#if !TARGET_OS_OSX // [macOS]
   if ([minimumTrackImage isEqual:_minimumTrackImage] && _trackImage == nil) {
     return;
   }
@@ -258,10 +275,12 @@ using namespace facebook::react;
       [_minimumTrackImage resizableImageWithCapInsets:(UIEdgeInsets){0, _minimumTrackImage.size.width, 0, 0}
                                          resizingMode:UIImageResizingModeStretch];
   [_sliderView setMinimumTrackImage:_minimumTrackImage forState:UIControlStateNormal];
+#endif // [macOS]
 }
 
 - (void)setMaximumTrackImage:(UIImage *)maximumTrackImage
 {
+#if !TARGET_OS_OSX // [macOS]
   if ([maximumTrackImage isEqual:_maximumTrackImage] && _trackImage == nil) {
     return;
   }
@@ -272,38 +291,42 @@ using namespace facebook::react;
       [_maximumTrackImage resizableImageWithCapInsets:(UIEdgeInsets){0, 0, 0, _maximumTrackImage.size.width}
                                          resizingMode:UIImageResizingModeStretch];
   [_sliderView setMaximumTrackImage:_maximumTrackImage forState:UIControlStateNormal];
+#endif // [macOS]
 }
 
 - (void)setThumbImage:(UIImage *)thumbImage
 {
+#if !TARGET_OS_OSX // [macOS]
   if ([thumbImage isEqual:_thumbImage]) {
     return;
   }
 
   _thumbImage = thumbImage;
   [_sliderView setThumbImage:thumbImage forState:UIControlStateNormal];
+#endif // [macOS]
 }
 
-- (void)onChange:(UISlider *)sender
+- (void)onChange:(RCTUISlider *)sender // [macOS]
 {
   [self onChange:sender withContinuous:YES];
 }
 
-- (void)sliderTouchEnd:(UISlider *)sender
+- (void)sliderTouchEnd:(RCTUISlider *)sender // [macOS]
 {
   [self onChange:sender withContinuous:NO];
 }
 
-- (void)onChange:(UISlider *)sender withContinuous:(BOOL)continuous
+- (void)onChange:(RCTUISlider *)sender withContinuous:(BOOL)continuous // [macOS]
 {
   float value = sender.value;
 
   const auto &props = *std::static_pointer_cast<const SliderProps>(_props);
 
   if (props.step > 0 && props.step <= (props.maximumValue - props.minimumValue)) {
-    value = MAX(
+    value = (float)std::max(
         props.minimumValue,
-        MIN(props.maximumValue, props.minimumValue + round((value - props.minimumValue) / props.step) * props.step));
+        std::min(
+            props.maximumValue, props.minimumValue + round((value - props.minimumValue) / props.step) * props.step));
 
     [_sliderView setValue:value animated:YES];
   }
@@ -319,6 +342,15 @@ using namespace facebook::react;
 
   _previousValue = value;
 }
+
+#if TARGET_OS_OSX // [macOS
+- (void)slider:(id)slider didPress:(BOOL)press
+{
+  if (!press) {
+    [self onChange:slider withContinuous:NO];
+  }
+}
+#endif // macOS]
 
 #pragma mark - RCTImageResponseDelegate
 
